@@ -21,7 +21,7 @@
 
   const bidValue = $derived(game.bids[seat]);
   const won = $derived(game.won[seat] ?? 0);
-  const active = $derived(game.phase === 'round' && game.stage !== 'done' && game.turn === seat);
+  const active = $derived(game.phase === 'round' && game.waiting.includes(seat));
   const dealer = $derived(game.dealer === seat);
   const over = $derived(bidValue !== null && won > bidValue);
   const met = $derived(bidValue !== null && won === bidValue);
@@ -37,7 +37,8 @@
     <span class="name">{me ? t('you') : (player?.name ?? '?')}</span>
     <span class="line">
       {#if bidValue === null}
-        {#if active && game.stage === 'bid'}<span class="bid wait">{t('bidding')}</span>{/if}
+        {#if active && game.stage === 'bid'}<span class="bid wait">{t('bidding')}</span>
+        {:else if game.bidIn[seat]}<span class="bid wait done" aria-label={t('bidDone')}>✓ {t('bidHidden')}</span>{/if}
       {:else}
         <span class="bid" class:met class:over aria-label={t('bidWon', { bid: bidValue, won })}>
           {#if pips <= 6}
@@ -153,6 +154,9 @@
   .bid.wait {
     font: 600 11px/1 var(--ewo-mono);
     color: var(--on-cloth-2);
+  }
+  .bid.done {
+    color: var(--gold-hi);
   }
   .bid.met .zero,
   .bid.met .count {

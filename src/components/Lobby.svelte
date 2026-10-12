@@ -204,6 +204,19 @@
       {/if}
       <span class="hint">{settings.clock === 'off' ? t('clockHintOff') : t('clockHint')}</span>
     </div>
+    <div class="setting">
+      <span class="label">{t('biddingRule')}</span>
+      {#if isHost}
+        <ewo-segmented stretch value={settings.bidding} label={t('biddingRule')} onchange={(e) => change({ bidding: e.detail.value as Settings['bidding'] })}>
+          <option value="open">{t('bidding_open')}</option>
+          <option value="uneven">{t('bidding_uneven')}</option>
+          <option value="secret">{t('bidding_secret')}</option>
+        </ewo-segmented>
+      {:else}
+        <b>{t(`bidding_${settings.bidding}`)}</b>
+      {/if}
+      <span class="hint">{t(`biddingHint_${settings.bidding}`)}</span>
+    </div>
     <p class="length">{rounds ? t('lengthHint', { players: seated.length, rounds }) : t('lengthNone', { min: MIN, max: MAX })}</p>
   </section>
 

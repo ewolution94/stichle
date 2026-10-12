@@ -5,11 +5,14 @@ import type { Suit } from './deck';
 
 export type Phase = 'lobby' | 'play' | 'final' | 'gone';
 export type ClockChoice = 'off' | 'relaxed' | 'quick';
+/** open: the original · uneven: the bids mayn't add up · secret: everyone at once, unseen (R2). */
+export type Bidding = 'open' | 'uneven' | 'secret';
 /** A card id: "fire-7", "z-water" (a Wizard), "n-air" (a Jester). */
 export type CardId = string;
 
 export interface Settings {
   clock: ClockChoice;
+  bidding: Bidding;
 }
 
 export interface Player {
@@ -62,9 +65,17 @@ export interface Game {
   /** The round's own step: the dealer picks trump (a Wizard was turned), the bids, the tricks. */
   stage: 'trump' | 'bid' | 'play' | 'done';
   turn: number;
+  bidding: Bidding;
+  /** The seats the game waits for: the one in turn, or every secret bid still out. */
+  waiting: number[];
   trumpCard: CardId | null;
   trump: Suit | null;
+  /** Secret bids show only your own until all are in. */
   bids: (number | null)[];
+  /** Who has bid (secret bids too). */
+  bidIn: boolean[];
+  /** The one bid you mayn't make ("mustn't add up"), or null. */
+  forbidden: number | null;
   won: number[];
   trick: Trick;
   lastTrick: FinishedTrick | null;
@@ -112,6 +123,7 @@ export interface Seat {
 export interface Config {
   clocks: ClockChoice[];
   moveSeconds: Record<string, number>;
+  biddings: Bidding[];
   seats: { min: number; max: number };
   reactions: string[];
 }

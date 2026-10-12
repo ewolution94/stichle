@@ -59,7 +59,7 @@
             <tr class="now">
               <th scope="row" class="r">{game.round}</th>
               {#each game.seats as _, i (i)}
-                <td><small>{game.bids[i] ?? '–'}{game.bids[i] !== null ? `·${game.won[i]}` : ''}</small></td>
+                <td><small>{game.bids[i] ?? (game.bidIn[i] ? '✓' : '–')}{game.bids[i] !== null ? `·${game.won[i]}` : ''}</small></td>
               {/each}
             </tr>
           {/if}

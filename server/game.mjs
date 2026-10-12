@@ -17,7 +17,9 @@
 import { randomBytes, randomInt as cryptoInt } from 'node:crypto';
 import { cleanAvatar, randomAvatar } from './avatar.mjs';
 import { botBid, botPlay, botTrump } from './bots.mjs';
-import { RuleError, SUITS, bid, deal, isJester, isWizard, legalCards, pickTrump, play, roundsFor, sortHand } from './rules.mjs';
+import { BIDDINGS, RuleError, SUITS, bid, bidders, deal, forbiddenBid, isJester, isWizard, legalCards, pickTrump, play, roundsFor, sortHand } from './rules.mjs';
+
+export { BIDDINGS };
 
 export class GameError extends Error {
   /** @param {string} code  @param {number} [status]  @param {Record<string, unknown>} [detail] */
@@ -38,7 +40,8 @@ export const CLOCKS = Object.freeze(['off', 'relaxed', 'quick']);
 export const MOVE_SECONDS = Object.freeze({ relaxed: 60, quick: 25 });
 export const REACTIONS = Object.freeze(['👍', '😂', '😮', '🤔', '🔥', '🙈']);
 
-export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off' });
+/** clock: a clock per move · bidding: open (the original), uneven ("mustn't add up"), secret (R2). */
+export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open' });
 
 export const LIMITS = {
   rooms: 200,
@@ -228,6 +231,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       round: 1,
       // The first dealer is drawn; the deal moves on one seat each round.
       dealer: randomInt(n),
+      /** The house rule for bids, fixed for the game. */
+      bidding: r.settings.bidding,
       state: null,
       phase: 'round',
       /** Finished rounds: what everyone bid, took and scored. */
@@ -252,7 +257,7 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
 
   function dealRound(r) {
     const g = r.game;
-    g.state = deal({ players: g.seats.length, round: g.round, dealer: g.dealer, randomInt });
+    g.state = deal({ players: g.seats.length, round: g.round, dealer: g.dealer, randomInt, bidding: g.bidding });
     // What R2's achievements will count: each seat's Wizards and Jesters as dealt.
     g.dealt = g.state.hands.map((hand) => ({ z: hand.filter(isWizard).length, n: hand.filter(isJester).length }));
     sortHands(g);
@@ -285,14 +290,23 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     botsPlay(r);
   }
 
-  /** The move the seat whose turn it is would make if a bot sat there. */
-  function autoMove(r) {
+  /** Whose move the game waits for: the one in turn, or every secret bid still out. */
+  const waiting = (s) => (s.phase === 'bid' ? bidders(s) : [s.turn]);
+
+  /**
+   * The move a bot would make for `seat` (default: every seat the game waits for, as when the clock
+   * runs out on secret bids).
+   */
+  function autoMove(r, only = null) {
     const g = r.game;
     const s = g.state;
     if (g.phase !== 'round') return;
+    if (s.phase === 'bid') {
+      for (const seat of only === null ? waiting(s) : [only]) if (s.phase === 'bid' && bidders(s).includes(seat)) placeBid(r, seat, botBid(s, seat));
+      return;
+    }
     const seat = s.turn;
     if (s.phase === 'trump') return chooseTrump(r, seat, botTrump(s, seat));
-    if (s.phase === 'bid') return placeBid(r, seat, botBid(s, seat));
     if (s.phase === 'play') {
       const wait = g.holdUntil - clock.now();
       if (wait > 0) {
@@ -385,17 +399,18 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     if (g.phase === 'scored') return readyCheck(r);
     const s = g.state;
     if (s.phase === 'done') return;
-    const p = r.players.get(g.seats[s.turn]);
     const move = g.move;
     const still = () => r.phase === 'play' && g.move === move;
-    if (!p || p.bot) {
-      const wait = Math.max(think(), g.holdUntil - clock.now() + 250);
-      later(r, wait, () => still() && autoMove(r));
-      return;
-    }
-    if (p.left || p.online === 0) {
-      const gone = p.left ? 0 : AWAY_MS - Math.min(AWAY_MS, clock.now() - (p.offlineSince ?? clock.now()));
-      later(r, Math.max(gone, think(), g.holdUntil - clock.now() + 250), () => still() && (p.left || p.online === 0) && autoMove(r));
+    for (const seat of waiting(s)) {
+      const p = r.players.get(g.seats[seat]);
+      const only = s.phase === 'bid' ? seat : null;
+      if (!p || p.bot) {
+        const wait = Math.max(think(), g.holdUntil - clock.now() + 250);
+        later(r, wait, () => still() && autoMove(r, only));
+      } else if (p.left || p.online === 0) {
+        const gone = p.left ? 0 : AWAY_MS - Math.min(AWAY_MS, clock.now() - (p.offlineSince ?? clock.now()));
+        later(r, Math.max(gone, think(), g.holdUntil - clock.now() + 250), () => still() && (p.left || p.online === 0) && autoMove(r, only));
+      }
     }
   }
 
@@ -441,9 +456,16 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       phase: g.phase,
       stage: s.phase,
       turn: s.turn,
+      bidding: g.bidding,
+      /** The seats the game waits for: the one in turn, or every secret bid still out. */
+      waiting: g.phase === 'round' && s.phase !== 'done' ? waiting(s) : [],
       trumpCard: s.trumpCard,
       trump: s.trump,
-      bids: s.bids,
+      // Secret bids stay with their bidder until all are in.
+      bids: g.bidding === 'secret' && s.phase === 'bid' ? s.bids.map((b, i) => (i === mine ? b : null)) : s.bids,
+      bidIn: s.bids.map((b) => b !== null),
+      /** The one bid you mayn't make ("mustn't add up"), or null. */
+      forbidden: mine >= 0 ? forbiddenBid(s, mine) : null,
       won: s.won,
       trick: s.trick,
       lastTrick: g.lastTrick,
@@ -858,5 +880,6 @@ export function cleanText(raw, max) {
 export function mergeSettings(current, body) {
   const next = { ...current };
   if (CLOCKS.includes(body?.clock)) next.clock = body.clock;
+  if (BIDDINGS.includes(body?.bidding)) next.bidding = body.bidding;
   return next;
 }

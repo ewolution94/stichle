@@ -20,7 +20,7 @@
 // Errors are `{ "error": "<code>" }` with a status; the codes are GameError's and the client words
 // them.
 
-import { GameError, CLOCKS, DEFAULT_SETTINGS, LIMITS, MOVE_SECONDS, REACTIONS } from './game.mjs';
+import { GameError, BIDDINGS, CLOCKS, DEFAULT_SETTINGS, LIMITS, MOVE_SECONDS, REACTIONS } from './game.mjs';
 
 const MAX_BODY = 8 * 1024;
 /** Cloudflare drops a stream that's quiet for 100 s. */
@@ -110,6 +110,7 @@ export function createApi({ games }) {
         json(res, 200, {
           clocks: CLOCKS,
           moveSeconds: MOVE_SECONDS,
+          biddings: BIDDINGS,
           seats: { min: LIMITS.minSeats, max: LIMITS.seats },
           reactions: REACTIONS,
           defaults: DEFAULT_SETTINGS,

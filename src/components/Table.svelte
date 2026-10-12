@@ -33,7 +33,8 @@
   /** The other seats, in the order play goes from yours. */
   const others = $derived(Array.from({ length: n - 1 }, (_, i) => (home + 1 + i) % n));
   const turnName = $derived(playerAt(game.turn)?.name ?? '');
-  const myTurn = $derived(mine >= 0 && game.phase === 'round' && game.stage !== 'done' && game.turn === mine);
+  const myTurn = $derived(mine >= 0 && game.phase === 'round' && game.stage !== 'done' && game.waiting.includes(mine));
+  const secret = $derived(game.bidding === 'secret');
 
   // A finished trick holds the table for a moment: no card until it's cleared.
   let now = $state(Date.now());
@@ -111,7 +112,7 @@
   // A move the server took is done at once: its panel goes, even if the room's update (which moves
   // the turn on) is a moment behind the answer. Without this a second tap in that moment sent the
   // bid again and earned "not your turn" (found by the QA run, 2026-10-12).
-  const moveKey = $derived(`${game.n}:${game.round}:${game.stage}:${game.turn}`);
+  const moveKey = $derived(`${game.n}:${game.round}:${game.stage}:${game.turn}:${game.bidIn.join('')}`);
   let sent = $state('');
   async function decide(action: string, body: unknown, from: Event) {
     const key = moveKey;
@@ -139,7 +140,10 @@
   const status = $derived.by(() => {
     if (game.phase !== 'round') return '';
     if (game.stage === 'trump') return game.dealer === mine ? t('pickTrumpYou') : t('pickTrumpOther', { name: playerAt(game.dealer)?.name ?? '' });
-    if (game.stage === 'bid') return myTurn ? t('bidYou') : t('bidOther', { name: turnName });
+    if (game.stage === 'bid') {
+      if (secret) return myTurn ? t('bidSecretYou') : t('bidSecretWait', { n: game.waiting.length });
+      return myTurn ? t('bidYou') : t('bidOther', { name: turnName });
+    }
     if (game.stage === 'play') {
       if (holding && game.lastTrick) {
         const w = game.lastTrick.winner;
@@ -242,8 +246,16 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12" /></svg>
           </button>
         </div>
-        <span class="sofar">{t('bidsSoFar', { sum: bidsSoFar, n: game.round })}</span>
-        <button class="btn primary block" type="button" onclick={(e) => decide('bid', { n: pick }, e).catch(() => {})}>{t('bidThis', { n: pick })}</button>
+        {#if pick === game.forbidden}
+          <span class="sofar no">{t('bidForbiddenHint', { n: game.round })}</span>
+        {:else if secret}
+          <span class="sofar">{t('bidSecretHint')}</span>
+        {:else}
+          <span class="sofar">{t('bidsSoFar', { sum: bidsSoFar, n: game.round })}</span>
+        {/if}
+        <button class="btn primary block" type="button" disabled={pick === game.forbidden} onclick={(e) => decide('bid', { n: pick }, e).catch(() => {})}>
+          {pick === game.forbidden ? t('bidForbidden', { n: pick }) : t('bidThis', { n: pick })}
+        </button>
       </div>
     {/if}
 
@@ -580,6 +592,10 @@
   .sofar {
     font-size: 13px;
     color: var(--mute);
+  }
+  .sofar.no {
+    color: var(--bad);
+    font-weight: 600;
   }
   .suits {
     display: grid;

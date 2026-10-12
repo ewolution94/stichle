@@ -5,7 +5,7 @@
 // Pure functions over a round state from rules.mjs, deterministic: the same state gives the same
 // move. Equal cards (two off-suit 9s) go from the shorter suit first, to make a void sooner.
 
-import { DECK, RuleError, SUITS, isWizard, legalCards, parseCard, trickWinner } from './rules.mjs';
+import { DECK, RuleError, SUITS, forbiddenBid, isWizard, legalCards, parseCard, trickWinner } from './rules.mjs';
 
 /** @typedef {import('./rules.mjs').RoundState} RoundState */
 
@@ -69,7 +69,12 @@ export function botBid(state, seat) {
   const mean = unseen.reduce((sum, id) => sum + worth(id, trump, offScale), 0) / unseen.length;
   const claimed = mine + (players - 1) * round * mean;
   const expected = claimed > 0 ? mine * Math.max(1, round / claimed) : 0;
-  return Math.max(0, Math.min(round, Math.round(expected)));
+  const n = Math.max(0, Math.min(round, Math.round(expected)));
+  // "Mustn't add up": the forbidden number is out; take the neighbour nearer to the estimate.
+  const no = forbiddenBid(state, seat);
+  if (n !== no) return n;
+  const up = n + 1 <= round, down = n - 1 >= 0;
+  return up && (!down || expected >= n) ? n + 1 : n - 1;
 }
 
 /**

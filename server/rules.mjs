@@ -33,6 +33,14 @@ export const DECK = Object.freeze([
 const CARD = /^(?:(fire|water|earth|air)-(1[0-3]|[1-9])|([zn])-(fire|water|earth|air))$/;
 
 /**
+ * How the bids go (a house rule, R2): `open` is the original (in turn, any total); `uneven` the same,
+ * but the last bidder mayn't make the bids add up to the cards, so someone always misses; `secret`
+ * everyone at once, unseen until all are in (the game's views hide them).
+ * @typedef {'open' | 'uneven' | 'secret'} Bidding
+ */
+export const BIDDINGS = Object.freeze(['open', 'uneven', 'secret']);
+
+/**
  * @typedef {{ k: 'num', s: string, v: number } | { k: 'z', s: string } | { k: 'n', s: string }} Card
  * @typedef {{ seat: number, card: string }} Played
  * @typedef {{ lead: number, cards: Played[] }} Trick
@@ -40,7 +48,7 @@ const CARD = /^(?:(fire|water|earth|air)-(1[0-3]|[1-9])|([zn])-(fire|water|earth
  *   players: number, round: number, dealer: number,
  *   hands: string[][], trumpCard: string | null, trump: string | null,
  *   phase: 'trump' | 'bid' | 'play' | 'done', turn: number,
- *   bids: (number | null)[], won: number[],
+ *   bidding: Bidding, bids: (number | null)[], won: number[],
  *   trick: Trick, tricks: (Trick & { winner: number })[],
  *   points: number[] | null,
  * }} RoundState
@@ -107,10 +115,11 @@ const nextSeat = (seat, players) => (seat + 1) % players;
  * randomInt(n) returns 0..n-1. For tests, `hands` (per seat) and `trumpCard` instead of randomInt
  * give a fixed deal.
  * @param {{ players: number, round: number, dealer: number, randomInt?: (n: number) => number,
- *   hands?: string[][], trumpCard?: string | null }} options
+ *   hands?: string[][], trumpCard?: string | null, bidding?: Bidding }} options
  * @returns {RoundState}
  */
-export function deal({ players, round, dealer, randomInt, hands: fixed, trumpCard: fixedTrump }) {
+export function deal({ players, round, dealer, randomInt, hands: fixed, trumpCard: fixedTrump, bidding = 'open' }) {
+  if (!BIDDINGS.includes(bidding)) throw new RuleError('bidding');
   const rounds = roundsFor(players);
   if (!Number.isInteger(round) || round < 1 || round > rounds) throw new RuleError('round');
   // A dealer who isn't a seat at this table.
@@ -146,6 +155,7 @@ export function deal({ players, round, dealer, randomInt, hands: fixed, trumpCar
     trump,
     phase: pick ? 'trump' : 'bid',
     turn: pick ? dealer : left,
+    bidding,
     bids: Array(players).fill(null),
     won: Array(players).fill(0),
     trick: { lead: left, cards: [] },
@@ -176,17 +186,39 @@ export function pickTrump(state, seat, suit) {
   state.turn = nextSeat(state.dealer, state.players);
 }
 
-/** A seat's bid: 0 up to the cards in hand, any total (no "mustn't add up" rule). */
+/** Whose bid is awaited: the one in turn, or with secret bids everyone who hasn't bid yet. */
+export function bidders(state) {
+  if (state.phase !== 'bid') return [];
+  if (state.bidding === 'secret') return state.bids.flatMap((b, seat) => (b === null ? [seat] : []));
+  return [state.turn];
+}
+
+/**
+ * The one bid `seat` mayn't make with the "mustn't add up" rule: as the last to bid, the number that
+ * would make all bids equal the cards dealt. Null when there's none (another rule, not the last
+ * bidder, or the number is out of reach).
+ */
+export function forbiddenBid(state, seat) {
+  if (state.bidding !== 'uneven' || state.phase !== 'bid') return null;
+  const others = state.bids.filter((b, i) => i !== seat);
+  if (others.some((b) => b === null)) return null;
+  const n = state.round - others.reduce((sum, b) => sum + b, 0);
+  return n >= 0 && n <= state.round ? n : null;
+}
+
+/** A seat's bid: 0 up to the cards in hand; with `uneven`, never the number that makes it add up. */
 export function bid(state, seat, n) {
   if (state.phase !== 'bid') throw new RuleError('phase');
-  if (seat !== state.turn) throw new RuleError('turn');
+  if (!bidders(state).includes(seat)) throw new RuleError('turn');
   if (!Number.isInteger(n) || n < 0 || n > state.round) throw new RuleError('bid');
+  if (n === forbiddenBid(state, seat)) throw new RuleError('uneven');
   state.bids[seat] = n;
   const left = nextSeat(state.dealer, state.players);
-  state.turn = nextSeat(seat, state.players);
-  // Back to the first bidder: everyone has bid, and they lead the first trick.
-  if (state.turn === left) {
+  state.turn = state.bidding === 'secret' ? left : nextSeat(seat, state.players);
+  // Everyone has bid (back to the first bidder, or the last secret bid is in): they lead the first trick.
+  if (state.bids.every((b) => b !== null)) {
     state.phase = 'play';
+    state.turn = left;
     state.trick = { lead: left, cards: [] };
   }
 }

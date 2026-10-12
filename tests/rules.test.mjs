@@ -18,6 +18,8 @@ import {
   sortHand,
   suitToFollow,
   trickWinner,
+  bidders,
+  forbiddenBid,
 } from '../server/rules.mjs';
 
 const throws = (fn, code) => assert.throws(fn, (e) => e instanceof RuleError && e.code === code, code);
@@ -505,4 +507,56 @@ test('whole games at 3, 4, 5 and 6 players: every round played out with legal ca
   assert.ok(picked > 0, 'a turned Wizard came up');
   assert.ok(jesters > 0, 'a turned Jester came up');
   assert.ok(refused > 100, 'the follow rule came up');
+});
+
+// ---- house rules (R2) --------------------------------------------------------------------
+
+test("uneven: the dealer, bidding last, mayn't make the bids add up to the cards", () => {
+  const s = deal({ players: 3, round: 3, dealer: 0, hands: [['fire-1', 'fire-2', 'fire-3'], ['water-1', 'water-2', 'water-3'], ['earth-1', 'earth-2', 'earth-3']], trumpCard: 'air-5', bidding: 'uneven' });
+  assert.equal(forbiddenBid(s, 1), null);
+  bid(s, 1, 1);
+  bid(s, 2, 1);
+  // 1 + 1 + 1 would be 3, the cards dealt.
+  assert.equal(forbiddenBid(s, 0), 1);
+  assert.throws(() => bid(s, 0, 1), (e) => e instanceof RuleError && e.code === 'uneven');
+  bid(s, 0, 2);
+  assert.equal(s.phase, 'play');
+  assert.deepEqual(s.bids, [2, 1, 1]);
+});
+
+test('uneven: nothing is forbidden when the others already bid past the cards', () => {
+  const s = deal({ players: 3, round: 1, dealer: 0, hands: [['fire-1'], ['water-1'], ['earth-1']], trumpCard: 'air-5', bidding: 'uneven' });
+  bid(s, 1, 1);
+  bid(s, 2, 1);
+  assert.equal(forbiddenBid(s, 0), null);
+  bid(s, 0, 0);
+  assert.equal(s.phase, 'play');
+});
+
+test('open bids keep the original: any total, in turn', () => {
+  const s = deal({ players: 3, round: 1, dealer: 0, hands: [['fire-1'], ['water-1'], ['earth-1']], trumpCard: 'air-5' });
+  assert.equal(s.bidding, 'open');
+  bid(s, 1, 0);
+  bid(s, 2, 0);
+  assert.equal(forbiddenBid(s, 0), null);
+  bid(s, 0, 1);
+  assert.equal(s.phase, 'play');
+});
+
+test('secret: everyone bids at once, in any order; the first trick is led left of the dealer', () => {
+  const s = deal({ players: 4, round: 2, dealer: 1, hands: [['fire-1', 'fire-2'], ['water-1', 'water-2'], ['earth-1', 'earth-2'], ['air-1', 'air-2']], trumpCard: 'fire-9', bidding: 'secret' });
+  assert.deepEqual(bidders(s), [0, 1, 2, 3]);
+  bid(s, 3, 1);
+  bid(s, 0, 0);
+  assert.deepEqual(bidders(s), [1, 2]);
+  assert.throws(() => bid(s, 3, 2), (e) => e.code === 'turn');
+  bid(s, 1, 2);
+  bid(s, 2, 0);
+  assert.equal(s.phase, 'play');
+  assert.equal(s.turn, 2);
+  assert.equal(s.trick.lead, 2);
+});
+
+test('a bidding mode the rules do not know is refused', () => {
+  assert.throws(() => deal({ players: 3, round: 1, dealer: 0, randomInt: () => 0, bidding: 'loud' }), (e) => e.code === 'bidding');
 });

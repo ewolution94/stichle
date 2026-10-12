@@ -269,3 +269,87 @@ test('the host swaps seats; settings keep only what is valid', () => {
   r.act(r.host, 'settings', { clock: 'relaxed' });
   assert.equal(r.pages[0].view.settings.clock, 'relaxed');
 });
+
+// ---- house rules (R2) --------------------------------------------------------------------
+
+/** A turned Wizard: the dealer (a person here) picks a suit. */
+function pickIfAsked(r) {
+  const g = r.pages[0].view.game;
+  if (g.stage !== 'trump') return;
+  const dealer = r.seats.findIndex((s) => s.player === g.seats[g.dealer]);
+  r.act(r.seats[dealer], 'trump', { suit: 'earth' });
+}
+
+test('secret bids: everyone bids at once; no page sees another bid until all are in', () => {
+  const { games } = setup(21);
+  const r = room(games, 2);
+  r.act(r.host, 'settings', { bidding: 'secret' });
+  r.act(r.host, 'start');
+  pickIfAsked(r);
+  const g = r.pages[0].view.game;
+  assert.equal(g.bidding, 'secret');
+  assert.equal(g.waiting.length, 3);
+  // Lea bids first, out of the old turn order.
+  r.act(r.seats[2], 'bid', { n: 1 });
+  const lea = g.seats.indexOf(r.seats[2].player);
+  assert.equal(r.pages[2].view.game.bids[lea], 1);
+  assert.equal(r.pages[0].view.game.bids[lea], null);
+  assert.equal(r.pages[1].view.game.bids[lea], null);
+  assert.equal(r.pages[0].view.game.bidIn[lea], true);
+  assert.equal(r.pages[0].view.game.waiting.includes(lea), false);
+  assert.equal(code(() => r.act(r.seats[2], 'bid', { n: 0 })), 'turn');
+  r.act(r.seats[0], 'bid', { n: 0 });
+  r.act(r.seats[1], 'bid', { n: 0 });
+  const after = r.pages[0].view.game;
+  assert.equal(after.stage, 'play');
+  assert.equal(after.bids[lea], 1);
+});
+
+test('secret bids with bots: the bots bid on their own and the round goes on', () => {
+  const { games, clock } = setup(22);
+  const r = room(games, 0);
+  r.act(r.host, 'bot', { add: true });
+  r.act(r.host, 'bot', { add: true });
+  r.act(r.host, 'settings', { bidding: 'secret' });
+  r.act(r.host, 'start');
+  const g0 = r.pages[0].view.game;
+  if (g0.stage === 'trump' && g0.seats[g0.dealer] === r.host.player) r.act(r.host, 'trump', { suit: 'air' });
+  clock.advance(5000);
+  const g = r.pages[0].view.game;
+  const me = g.seats.indexOf(r.host.player);
+  assert.equal(g.stage, 'bid');
+  assert.deepEqual(g.waiting, [me]);
+  r.act(r.host, 'bid', { n: 0 });
+  assert.equal(r.pages[0].view.game.stage, 'play');
+});
+
+test("mustn't add up: only the dealer's page is told the one bid it mayn't make, and the server refuses it", () => {
+  const { games } = setup(23);
+  const r = room(games, 2);
+  r.act(r.host, 'settings', { bidding: 'uneven' });
+  r.act(r.host, 'start');
+  pickIfAsked(r);
+  for (let i = 0; i < 2; i++) {
+    const at = turnOf(r);
+    r.act(r.seats[at], 'bid', { n: 0 });
+  }
+  const g = r.pages[0].view.game;
+  const dealer = turnOf(r);
+  assert.equal(g.seats[g.dealer], r.seats[dealer].player);
+  assert.equal(r.pages[dealer].view.game.forbidden, 1);
+  for (const [i, page] of r.pages.entries()) if (i !== dealer) assert.equal(page.view.game.forbidden, null);
+  assert.equal(code(() => r.act(r.seats[dealer], 'bid', { n: 1 })), 'uneven');
+  r.act(r.seats[dealer], 'bid', { n: 0 });
+  assert.equal(r.pages[0].view.game.stage, 'play');
+});
+
+test('the bidding rule is a setting the host picks, and stays fixed for the game', () => {
+  const { games } = setup(24);
+  const r = room(games, 2);
+  r.act(r.host, 'settings', { bidding: 'loud' });
+  assert.equal(r.pages[0].view.settings.bidding, 'open');
+  r.act(r.host, 'settings', { bidding: 'uneven' });
+  r.act(r.host, 'start');
+  assert.equal(code(() => r.act(r.host, 'settings', { bidding: 'secret' })), 'wrong-phase');
+  assert.equal(r.pages[0].view.game.bidding, 'uneven');
+});

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { botBid, botPlay, botTrump } from '../server/bots.mjs';
-import { DECK, SUITS, bid, deal, legalCards, pickTrump, play, roundsFor } from '../server/rules.mjs';
+import { DECK, SUITS, bid, deal, forbiddenBid, legalCards, pickTrump, play, roundsFor } from '../server/rules.mjs';
 
 /** mulberry32: a repeatable random integer below n. */
 function seeded(seed) {
@@ -226,4 +226,19 @@ test('bots meet their bids far more often than random players, and play better t
   const rate = Object.fromEntries(Object.entries(met).map(([k, v]) => [k, v / seats]));
   assert.ok(rate.bots > 2 * rate.random, JSON.stringify(rate));
   assert.ok(rate.bots > rate.randomPlay + 0.03, JSON.stringify(rate));
+});
+
+test('with "mustn\'t add up" a bot dealer never bids the forbidden number', () => {
+  for (let seed = 1; seed <= 300; seed++) {
+    const randomInt = seeded(seed);
+    const players = 3 + (seed % 4);
+    const round = 1 + (seed % roundsFor(players));
+    const s = deal({ players, round, dealer: seed % players, randomInt, bidding: 'uneven' });
+    if (s.phase === 'trump') pickTrump(s, s.dealer, botTrump(s, s.dealer));
+    while (s.phase === 'bid') {
+      const n = botBid(s, s.turn);
+      assert.notEqual(n, forbiddenBid(s, s.turn));
+      bid(s, s.turn, n);
+    }
+  }
 });

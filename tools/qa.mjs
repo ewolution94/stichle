@@ -12,6 +12,8 @@ import { mkdirSync } from 'node:fs';
 const BASE = process.argv[2] ?? 'http://localhost:6311';
 const OUT = process.argv[3] ?? '/tmp/stichle-qa/';
 const ROUNDS = Number(process.env.ROUNDS ?? 3);
+/** The house rule for bids: open, uneven or secret. */
+const BIDDING = process.env.BIDDING ?? 'open';
 const W = Number(process.env.W ?? 390), H = Number(process.env.H ?? 844);
 mkdirSync(OUT, { recursive: true });
 
@@ -76,6 +78,7 @@ for (const [p, s] of [[host, seat], [guest, gseat]]) {
 }
 await host.page.waitForSelector('.lobby');
 await api(host.page, `/api/rooms/${seat.code}/bot`, { add: true }, seat.token);
+await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING }, seat.token);
 await snap(host, 'lobby');
 await snap(guest, 'lobby');
 await host.page.getByRole('button', { name: 'Karten geben' }).click();
@@ -111,8 +114,19 @@ async function act(p) {
     // One up with the dial when the round allows, then send.
     const plus = p.page.getByRole('button', { name: 'Einen mehr' });
     if (await plus.isEnabled({ timeout: 1500 }).catch(() => false)) await plus.click({ timeout: 1500 });
+    // "Mustn't add up": the forbidden number can't be sent; one down (or up) instead.
+    const send = p.page.locator('.panel.bid .btn.primary');
+    if (await send.isDisabled({ timeout: 1500 }).catch(() => false)) {
+      const less = p.page.getByRole('button', { name: 'Einen weniger' });
+      if (await less.isEnabled({ timeout: 1000 }).catch(() => false)) await less.click();
+      else await plus.click({ timeout: 1000 });
+      if (!seen[p.name].has('forbidden')) {
+        seen[p.name].add('forbidden');
+        say(p.name, 'stepped past a forbidden bid');
+      }
+    }
     try {
-      await p.page.getByRole('button', { name: /ansagen$/ }).click({ timeout: 3000 });
+      await send.click({ timeout: 3000 });
     } catch (e) {
       await p.page.screenshot({ path: `${OUT}fail-${p.name}-${Date.now()}.png` });
       const info = await p.page.evaluate(() => ({ panel: Boolean(document.querySelector('.panel.bid')), buttons: [...document.querySelectorAll('.panel.bid button')].map((b) => b.textContent.trim() + (b.disabled ? ' (disabled)' : '') + (b.getAttribute('aria-label') ? ` [${b.getAttribute('aria-label')}]` : '')), status: document.querySelector('.status, .toast')?.textContent }));
