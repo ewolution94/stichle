@@ -56,57 +56,99 @@
 </div>
 
 <style>
+  /* A place card, as at a banquet: the cards' own paper with their double rule, the player's seal
+     pressed onto it, name and score in ink. Solid, so nothing of the table shows through. Whose
+     turn it is: a gold edge, lifted a little off the cloth. */
   .seat {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     min-width: 0;
-    padding: 5px 9px 5px 5px;
-    border-radius: 999px;
-    background: rgb(0 0 0 / 0.34);
-    box-shadow: inset 0 0 0 1px rgb(236 230 214 / 0.14);
-    color: var(--on-cloth);
-    transition: box-shadow 0.25s, background-color 0.25s;
-  }
-  .seat.compact {
-    flex-direction: column;
-    gap: 3px;
-    padding: 6px 4px 5px;
-    border-radius: 14px;
-    text-align: center;
-  }
-  .seat.active {
-    background: rgb(0 0 0 / 0.5);
-    box-shadow: inset 0 0 0 1.5px var(--gold), 0 0 16px -2px rgb(243 220 148 / 0.45);
-  }
-  .seat.gone {
-    opacity: 0.55;
-  }
-  .face {
-    position: relative;
-    flex: none;
-    display: grid;
-  }
-  /* The dealer's deck: two small cards, one on the other. */
-  .dealer {
-    position: absolute;
-    right: -5px;
-    bottom: -3px;
-    width: 12px;
-    height: 16px;
-    border-radius: 2px;
+    padding: 6px 12px 6px 6px;
+    border-radius: 12px;
     background: var(--paper);
-    box-shadow: -3px -2px 0 -1px var(--paper-2), 0 0 0 1px var(--cloth);
+    color: var(--ink);
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.35),
+      0 12px 20px -12px rgb(0 0 0 / 0.8);
+    transition:
+      box-shadow 0.25s,
+      translate 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
   }
-  .dealer::after {
+  /* The double rule, inside the edge. */
+  .seat::before {
     content: '';
     position: absolute;
     inset: 3px;
-    border: 1px solid var(--gold-lo);
-    border-radius: 1px;
+    border: 1px solid rgb(28 26 34 / 0.45);
+    border-radius: 9px;
+    box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px rgb(28 26 34 / 0.2);
+    pointer-events: none;
+  }
+  /* The paper's grain, as on the cards. */
+  .seat::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: var(--grain);
+    background-size: 160px;
+    mix-blend-mode: multiply;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  /* At the far side of the table: upright, the seal standing out over the top edge. */
+  .seat.compact {
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 16px;
+    padding: 22px 6px 7px;
+    text-align: center;
+  }
+  .compact .face {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    translate: -50% 0;
+  }
+  .seat.active {
+    translate: 0 -2px;
+    box-shadow:
+      0 0 0 2px var(--gold),
+      0 0 0 4px rgb(201 162 74 / 0.25),
+      0 0 18px 2px rgb(243 220 148 / 0.35),
+      0 14px 22px -12px rgb(0 0 0 / 0.85);
+  }
+  .seat.gone {
+    filter: grayscale(0.7);
+    opacity: 0.62;
+  }
+  .face {
+    position: relative;
+    z-index: 1;
+    flex: none;
+    display: grid;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px -2px rgb(0 0 0 / 0.6);
+  }
+  /* The dealer's deck: two small cards, dark, gold-edged. */
+  .dealer {
+    position: absolute;
+    right: -6px;
+    bottom: -4px;
+    width: 12px;
+    height: 16px;
+    border-radius: 2px;
+    background: var(--cloth);
+    box-shadow:
+      -3px -2px 0 -1px var(--cloth),
+      -3px -2px 0 0 var(--gold),
+      0 0 0 1px var(--gold);
   }
   .info {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -114,11 +156,12 @@
   }
   .compact .info {
     align-items: center;
+    width: 100%;
   }
   .name {
     overflow: hidden;
     max-width: 100%;
-    font: 600 12.5px/1.15 var(--ewo-sans);
+    font: 650 12.5px/1.15 var(--ewo-sans);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -126,53 +169,59 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    min-height: 15px;
   }
   .bid {
     display: inline-flex;
     align-items: center;
     gap: 2.5px;
-    min-height: 10px;
   }
   .bid i {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    box-shadow: inset 0 0 0 1.2px var(--on-cloth-2);
+    box-shadow: inset 0 0 0 1.2px rgb(28 26 34 / 0.55);
   }
   .bid i.on {
-    background: var(--on-cloth);
+    background: var(--ink);
     box-shadow: none;
   }
   .bid.met i.on {
-    background: var(--gold-hi);
+    background: var(--earth);
   }
   .bid i.extra.on {
-    background: #ff8a73;
+    background: var(--fire);
   }
   .bid .zero,
   .bid .count,
   .bid.wait {
     font: 600 11px/1 var(--ewo-mono);
-    color: var(--on-cloth-2);
-  }
-  .bid.done {
-    color: var(--gold-hi);
+    color: var(--mute);
   }
   .bid.met .zero,
   .bid.met .count {
-    color: var(--gold-hi);
+    color: var(--earth);
   }
   .bid.over .count {
-    color: #ff8a73;
+    color: var(--fire);
+  }
+  .bid.done {
+    color: var(--gold-lo);
   }
   .total {
-    font: 700 13px/1 var(--display);
+    font: 700 14px/1 var(--display);
     font-variant-numeric: tabular-nums;
-    color: var(--on-cloth);
   }
   .clock {
     position: absolute;
+    z-index: 2;
     top: -10px;
     right: -6px;
+  }
+  .compact .clock {
+    top: auto;
+    bottom: -10px;
+    right: 50%;
+    translate: 50% 0;
   }
 </style>

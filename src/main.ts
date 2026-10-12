@@ -12,6 +12,7 @@ import '../vendor/ewo/elements/connection.js';
 import { mount } from 'svelte';
 import App from './App.svelte';
 import { defs } from './lib/deck';
+import { applyLook } from './lib/profile.svelte';
 // Every tap answers on a phone, the games' lively way: a deep press and a bounce on release
 // (Folio's pressFeedback, development/plans/mobile-touch.md; Schätzle is the games' pilot).
 import { pressFeedback } from '../vendor/ewo/elements/press.js';
@@ -44,6 +45,9 @@ try {
 } catch {
   // cards without grain
 }
+
+// The cloth and the cards' edges this device chose, before the first paint of the table.
+applyLook();
 
 function start() {
   mount(App, { target: document.getElementById('app')! });

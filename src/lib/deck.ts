@@ -12,6 +12,7 @@
 // Card sizes are in a 250 × 350 viewBox (63 × 88 mm, a poker card). The corner index is sized for the
 // hand: a card 74 px wide shows a strip of about 26 px, which is 88 units here.
 
+import type { BackId } from './achievements';
 import { FIGURES, LADDER, silhouette, type FigureId } from './figures.js';
 
 export type Suit = 'fire' | 'water' | 'earth' | 'air';
@@ -154,6 +155,7 @@ export function defs() {
 // ---------- Foil ----------
 
 const GOLD: [number, string][] = [[0, '#6e4f16'], [.16, '#b98b34'], [.3, '#f3dc94'], [.38, '#fff6d6'], [.46, '#d6aa4c'], [.6, '#7b5719'], [.76, '#c79a3c'], [.88, '#f0d68a'], [1, '#94702a']];
+const COPPER: [number, string][] = [[0, '#5a2a14'], [.16, '#9c5430'], [.3, '#e8a77c'], [.38, '#ffe1c8'], [.46, '#c47546'], [.6, '#6b331a'], [.76, '#b06a3e'], [.88, '#e9a77a'], [1, '#7a3d1f']];
 const SILVER: [number, string][] = [[0, '#5b616c'], [.18, '#a7aeb9'], [.32, '#e9eef5'], [.4, '#ffffff'], [.48, '#bcc3ce'], [.62, '#6a707b'], [.78, '#c3cad4'], [.9, '#eef1f5'], [1, '#878e99']];
 const foil = (id: string, stops: [number, string][], k: number) =>
   `<linearGradient id="${id}" class="foil" data-k="${k}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="250" y2="350" spreadMethod="reflect">${stops.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join('')}</linearGradient>`;
@@ -210,7 +212,19 @@ function figureCard(c: Face & { s: Suit }, fig: FigureId, lang: Lang, u: string)
 }
 
 /** One card as SVG. `uid` keeps the card's own gradient ids apart from every other card on the page. */
-export function card(c: Face, { lang = 'de', uid = 0, art = 'figures' }: { lang?: Lang; uid?: number | string; art?: Art } = {}) {
+/** The backs: the cloth's ultramarine in gold, and what the achievements unlock (R2). */
+const BACKS: Record<BackId, { ground: string; foil: [number, string][]; lines?: string }> = {
+  ultramarin: { ground: ULTRAMARINE, foil: GOLD },
+  bordeaux: { ground: '#5b1427', foil: GOLD },
+  waldgruen: { ground: '#173f2b', foil: GOLD },
+  nacht: { ground: '#141219', foil: GOLD },
+  silber: { ground: ULTRAMARINE, foil: SILVER },
+  kupfer: { ground: '#3a1d10', foil: COPPER },
+  // The gold back: the whole ground is foil, the engraving in black.
+  gold: { ground: 'foil', foil: GOLD, lines: BLACK },
+};
+
+export function card(c: Face, { lang = 'de', uid = 0, art = 'figures', back = 'ultramarin' }: { lang?: Lang; uid?: number | string; art?: Art; back?: BackId } = {}) {
   const t = WORDS[lang], u = String(uid);
   if (art === 'figures' && c.k !== 'back') {
     const fig = c.k === 'num' ? LADDER[c.v] : c.k === 'z' ? 'wizard' : 'jester';
@@ -252,18 +266,21 @@ export function card(c: Face, { lang = 'de', uid = 0, art = 'figures' }: { lang?
       ${label(t.nName, BLACK)}
       ${corners(index(t.n, BLACK, `<path d="${shapeD('diamond', 47, 88, 11)}" fill="${s}" stroke="${BLACK}" stroke-width=".8"/>`))}`);
   }
-  // The back.
+  // The back, in the look this device chose.
+  const look = BACKS[back] ?? BACKS.ultramarin;
   const g = `url(#st-gold-${u})`;
+  const ground = look.ground === 'foil' ? g : look.ground;
+  const line = look.lines ?? g;
   const four = SUITS.map((s, i) => {
     const a = -Math.PI / 2 + i * Math.PI / 2, x = 125 + Math.cos(a) * 82, y = 175 + Math.sin(a) * 82;
-    return `<circle cx="${f(x)}" cy="${f(y)}" r="12" fill="${ULTRAMARINE}" stroke="${g}" stroke-width="1"/><path d="${shapeD(SHAPE[s], x, y, 6.5)}" fill="${LUM[s]}"/>`;
+    return `<circle cx="${f(x)}" cy="${f(y)}" r="12" fill="${look.lines ? BLACK : ground}" stroke="${line}" stroke-width="1"/><path d="${shapeD(SHAPE[s], x, y, 6.5)}" fill="${LUM[s]}"/>`;
   }).join('');
-  return svg(foil(`st-gold-${u}`, GOLD, 9) + `<clipPath id="st-clip-${u}"><rect x="12" y="12" width="226" height="326" rx="8"/></clipPath>`,
-    `<rect width="250" height="350" rx="14" fill="${PAPER}"/><rect x="12" y="12" width="226" height="326" rx="8" fill="${ULTRAMARINE}"/>
-    <g clip-path="url(#st-clip-${u})"><use href="#st-waves" fill="none" stroke="${g}" stroke-width=".55" opacity=".8"/></g>
-    <rect x="12" y="12" width="226" height="326" rx="8" fill="none" stroke="${g}" stroke-width="1.4"/>
-    <circle cx="125" cy="175" r="66" fill="${ULTRAMARINE}" stroke="${g}" stroke-width="1.6"/>
-    <use href="#st-bros" fill="none" stroke="${g}" stroke-width=".6"/>
-    <circle cx="125" cy="175" r="40" fill="${ULTRAMARINE}" stroke="${g}" stroke-width="1"/>
-    <path d="${rose(125, 175, 34, 22, 9)}" fill="${g}"/>${four}`);
+  return svg(foil(`st-gold-${u}`, look.foil, 9) + `<clipPath id="st-clip-${u}"><rect x="12" y="12" width="226" height="326" rx="8"/></clipPath>`,
+    `<rect width="250" height="350" rx="14" fill="${PAPER}"/><rect x="12" y="12" width="226" height="326" rx="8" fill="${ground}"/>
+    <g clip-path="url(#st-clip-${u})"><use href="#st-waves" fill="none" stroke="${line}" stroke-width=".55" opacity="${look.lines ? .45 : .8}"/></g>
+    <rect x="12" y="12" width="226" height="326" rx="8" fill="none" stroke="${line}" stroke-width="1.4"/>
+    <circle cx="125" cy="175" r="66" fill="${look.lines ? BLACK : ground}" stroke="${line}" stroke-width="1.6"/>
+    <use href="#st-bros" fill="none" stroke="${look.lines ? g : line}" stroke-width=".6"/>
+    <circle cx="125" cy="175" r="40" fill="${look.lines ? BLACK : ground}" stroke="${look.lines ? g : line}" stroke-width="1"/>
+    <path d="${rose(125, 175, 34, 22, 9)}" fill="${look.lines ? g : line}"/>${four}`);
 }

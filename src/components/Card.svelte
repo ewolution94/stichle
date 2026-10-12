@@ -7,12 +7,13 @@
   import { card, fromId } from '../lib/deck';
   import { i18n } from '../lib/i18n.svelte';
   import { prefs } from '../lib/prefs.svelte';
+  import { profile } from '../lib/profile.svelte';
   import { nextUid } from '../lib/table';
 
   let { id = null, back = false, glare = false }: { id?: string | null; back?: boolean; glare?: boolean } = $props();
 
   const uid = nextUid();
-  const svg = $derived(card(back ? { k: 'back' } : fromId(id), { lang: i18n.lang, uid, art: prefs.art }));
+  const svg = $derived(card(back ? { k: 'back' } : fromId(id), { lang: i18n.lang, uid, art: prefs.art, back: profile.look.back }));
 </script>
 
 <div class="face">
@@ -30,6 +31,10 @@
     box-shadow: 0 1px 1px rgb(5 8 25 / 0.3), 0 8px 16px -8px rgb(5 8 25 / 0.6);
     -webkit-user-select: none;
     user-select: none;
+  }
+  /* Gilded edges (R2's unlockable): a fine gold line round every card. */
+  :global(:root[data-edge='gold']) .face {
+    box-shadow: 0 0 0 1.4px #d4a94c, 0 0 0 2.2px rgb(80 55 15 / 0.5), 0 8px 16px -8px rgb(5 8 25 / 0.6);
   }
   .face :global(svg) {
     display: block;

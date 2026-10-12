@@ -79,6 +79,23 @@ html {
   overflow-x: clip;
 }
 
+/* The cloth's colour, the backs' and the cards' edges, as this device chose (R2's unlockables). */
+:root[data-cloth='bordeaux'] {
+  --cloth: #5b1730;
+}
+:root[data-cloth='waldgruen'] {
+  --cloth: #1b4a33;
+}
+:root[data-cloth='schiefer'] {
+  --cloth: #2f3640;
+}
+:root[data-cloth='nacht'] {
+  --cloth: #16141c;
+}
+:root[data-cloth='kupfer'] {
+  --cloth: #6a3a1e;
+}
+
 /* The cloth the game is played on (the table's middle, the big screen's oval): woven, with a faint
    damask of the four suit signs, a gold-stitched border, and a candle's light that breathes. Its
    colour is the player's own choice (data-cloth, R2). Layers stay static; only the glow animates,

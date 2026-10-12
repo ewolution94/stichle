@@ -28,8 +28,9 @@
     font-variant-numeric: tabular-nums;
     padding: 4px 8px 3px;
     border-radius: 999px;
-    background: var(--paper);
-    color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: 0 0 0 1.5px var(--gold);
   }
   .urgent {
     background: var(--bad);
