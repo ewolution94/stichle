@@ -166,7 +166,7 @@
 
   <div class="seats" style:--count={others.length}>
     {#each others as seat, i (seat)}
-      <div class="far" style:--lift="{Math.round(Math.sin(((i + 1) / (others.length + 1)) * Math.PI) * -10)}px">
+      <div class="far" style:--lift="{Math.round((1 - Math.sin(((i + 1) / (others.length + 1)) * Math.PI)) * 14)}px">
         <SeatChip {room} {game} {seat} player={playerAt(seat)} compact />
         <span class="held" aria-label={t('cardsLeft', { n: game.counts[seat] })}>
           {#each { length: Math.min(game.counts[seat], 7) } as _, k (k)}<i style:--k={k - (Math.min(game.counts[seat], 7) - 1) / 2}></i>{/each}
@@ -260,7 +260,9 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 52px;
+    min-height: 54px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgb(236 230 214 / 0.12);
   }
   .round {
     display: flex;
@@ -371,11 +373,14 @@
     font-size: 21px;
   }
 
+  /* The far side of the table, clear of the bar: the middle seat furthest away, the outer ones a
+     little nearer, like chairs round a table. */
   .seats {
     display: grid;
     grid-template-columns: repeat(var(--count), minmax(0, 1fr));
     gap: 6px;
-    margin-top: 6px;
+    margin-top: 22px;
+    padding-bottom: 14px;
   }
   .far {
     display: flex;
