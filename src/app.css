@@ -1,0 +1,425 @@
+/* Stichle's look: Prägung, letterpress (development/plans/stichle.md → Look). Everything sits on the
+   card table, an ultramarine cloth with a faint engraving; the panels are the cards' own cotton paper
+   with their double rule; numbers and headings in Bodoni Moda, pressed in; gold only where something
+   is special. Light only, by decision (like CDNMS and Kritzle): the cards are paper.
+   Folio's tokens and elements are the bones (vendor/ewo); the tokens it shares point at these. */
+@import '../vendor/ewo/tokens/index.css';
+@import '../vendor/ewo/tokens/base.css';
+@import '@fontsource-variable/bodoni-moda/opsz.css';
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: light;
+  --ewo-light: 1;
+
+  /* The table and the paper. */
+  --cloth: #1d2b62;
+  --cloth-2: #16224f;
+  --cloth-3: #26367a;
+  --on-cloth: #ece6d6;
+  --on-cloth-2: #b9bfd9;
+  --paper: #f8f6f1;
+  --paper-2: #efeadf;
+  --ink: #1c1a22;
+  --ink-2: #3d3a45;
+  --mute: #5d5866;
+  --line: #c9c1ae;
+
+  /* The four inks, as on the cards (src/lib/deck.ts), and brighter for the cloth. */
+  --fire: #c23a22;
+  --water: #1f3c8f;
+  --earth: #1d6849;
+  --air: #a87405;
+  --fire-lum: #e8573b;
+  --water-lum: #7ea0f0;
+  --earth-lum: #52b884;
+  --air-lum: #e9b032;
+
+  --gold: #c9a24a;
+  --gold-hi: #f3dc94;
+  --gold-lo: #7b5719;
+  --good: #1d6849;
+  --bad: #b3261e;
+
+  --display: 'Bodoni Moda Variable', 'Bodoni Moda', Didot, 'Times New Roman', serif;
+  --shadow: 0 1px 0 rgb(10 14 40 / 0.25), 0 14px 26px -16px rgb(5 8 25 / 0.75);
+
+  --gutter: clamp(16px, 3vw, 40px);
+  --page: 1180px;
+  --bar-h: 58px;
+
+  /* Folio's shared tokens, on paper (its sheet, segmented and switch use these). */
+  --ewo-bg: var(--paper);
+  --ewo-bg-raised: var(--paper);
+  --ewo-panel: var(--paper);
+  --ewo-fg: var(--ink);
+  --ewo-fg-2: var(--ink-2);
+  --ewo-fg-3: var(--mute);
+  --ewo-line: rgb(28 26 34 / 0.2);
+  --ewo-line-2: rgb(28 26 34 / 0.1);
+  --ewo-line-strong: rgb(28 26 34 / 0.42);
+  --ewo-accent: var(--cloth);
+  --ewo-accent-2: var(--cloth);
+  --ewo-accent-ink: var(--paper);
+  --ewo-focus: 3px solid var(--gold);
+}
+
+html {
+  background-color: var(--cloth);
+  /* The cloth: a soft light in the middle, an engraved wave so faint it's felt more than seen. */
+  background-image:
+    radial-gradient(120% 80% at 50% 30%, rgb(255 255 255 / 0.07), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='16'%3E%3Cpath d='M0 8 Q10 2 20 8 T40 8 T60 8 T80 8' fill='none' stroke='%23ffffff' stroke-opacity='0.045' stroke-width='1'/%3E%3C/svg%3E");
+  background-attachment: fixed, scroll;
+  overflow-x: clip;
+}
+
+body {
+  background: transparent;
+  color: var(--on-cloth);
+  font-size: 15px;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* No double-tap zoom on the iPhone on anything you tap (it also made sticky headers look stuck).
+   Not on <html>: that would stop pinch zoom too (learnings/ios-and-webkit.md). */
+:where(button, a, label, summary, input, select, textarea, [role='button'], [role='radio']) {
+  touch-action: manipulation;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- paper ------------------------------------------------------------------------------- */
+
+/* A paper panel with the cards' double rule: a hairline, a gap, a heavier line. */
+.sheet {
+  position: relative;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.sheet::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgb(28 26 34 / 0.55);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4.5px rgb(28 26 34 / 0.75);
+  pointer-events: none;
+}
+.sheet > * {
+  position: relative;
+}
+
+/* Headings and numbers, pressed into the paper. */
+.display {
+  font-family: var(--display);
+  font-weight: 700;
+  /* Bodoni's optical sizes follow the font size: hairlines that vanish at 15 px get heavier there. */
+  font-optical-sizing: auto;
+  letter-spacing: -0.005em;
+}
+.pressed {
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.7), 0 -1px 0 rgb(0 0 0 / 0.12);
+}
+
+.label {
+  font: 600 11px/1.3 var(--ewo-sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.on-cloth .label,
+.label.on-cloth {
+  color: var(--on-cloth-2);
+}
+
+/* A suit's shape in its ink (src/lib/deck.ts draws the same). */
+.suit {
+  display: inline-block;
+  flex: none;
+  width: 0.8em;
+  height: 0.8em;
+  background: currentColor;
+}
+.suit.fire {
+  color: var(--fire);
+  clip-path: polygon(50% 2%, 100% 92%, 0 92%);
+}
+.suit.water {
+  color: var(--water);
+  border-radius: 50%;
+}
+.suit.earth {
+  color: var(--earth);
+  scale: 0.84;
+}
+.suit.air {
+  color: var(--air);
+  clip-path: polygon(50% 0, 88% 50%, 50% 100%, 12% 50%);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 650 15px / 1.15 var(--ewo-sans);
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--ewo-dur-1) var(--ewo-ease), background-color var(--ewo-dur-1) var(--ewo-ease);
+}
+/* The main move: an ultramarine pill with a gold hairline, the number of a letterpress ticket. */
+.btn.primary {
+  border-color: var(--cloth);
+  background: var(--cloth);
+  color: var(--paper);
+  box-shadow: inset 0 0 0 2px var(--cloth), inset 0 0 0 3px var(--gold);
+  font: 700 18px / 1 var(--display);
+  letter-spacing: 0.02em;
+}
+/* On the cloth, the main move is paper with the gold hairline. */
+.on-cloth .btn.primary {
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px var(--gold);
+}
+/* On the cloth itself, buttons are paper. */
+.btn.paper {
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
+}
+.btn.ghost {
+  border-color: rgb(236 230 214 / 0.5);
+  color: var(--on-cloth);
+}
+/* :active presses are for the mouse; a finger gets Folio's pressFeedback (main.ts), which iOS shows
+   on every tap and :active doesn't. Both at once would shrink a button twice. */
+@media (hover: hover) and (pointer: fine) {
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+@media (hover: hover) {
+  .btn:not(.primary, .paper, .ghost):hover:not(:disabled) {
+    background: rgb(28 26 34 / 0.05);
+  }
+  .btn.primary:hover:not(:disabled) {
+    background: var(--cloth-3);
+  }
+  .on-cloth .btn.primary:hover:not(:disabled) {
+    background: #ffffff;
+  }
+  .btn.paper:hover:not(:disabled) {
+    background: #ffffff;
+  }
+  .btn.ghost:hover:not(:disabled) {
+    background: rgb(255 255 255 / 0.08);
+  }
+}
+.btn.quiet {
+  min-height: 40px;
+  border-color: transparent;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.on-cloth .btn.quiet,
+.btn.quiet.on-cloth {
+  color: var(--on-cloth-2);
+}
+.btn.small {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+.btn.block {
+  width: 100%;
+}
+.btn:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+.btn:focus-visible,
+.input:focus-visible,
+.chip:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 14px/1.1 var(--ewo-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+.chip[aria-pressed='true'],
+.chip[aria-checked='true'] {
+  border-color: var(--cloth);
+  background: var(--cloth);
+  color: var(--paper);
+}
+.chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Form controls stay at 16px or more: smaller ones make iOS zoom the page. */
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--ink);
+  font: 600 17px / 1.2 var(--ewo-sans);
+}
+.input::placeholder {
+  color: #85808c;
+}
+
+.error {
+  color: var(--bad);
+  font-size: 14px;
+  font-weight: 600;
+}
+.on-cloth .error {
+  color: #ffb4a6;
+}
+
+/* Ending or leaving a game (settings' "This game"): the second tap says what happens, then the red
+   button does it (development/plans/end-game.md). */
+.sure {
+  margin: 0;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pair .btn {
+  flex: 1 1 140px;
+}
+.btn.danger-fill {
+  border-color: var(--bad);
+  background: var(--bad);
+  color: #ffffff;
+}
+@media (hover: hover) {
+  .btn.danger-fill:hover:not(:disabled) {
+    background: #9a2019;
+  }
+}
+
+/* The logo (Logo.svelte): the name in Bodoni, a gold compass rose for the dot on the i. */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 800 25px/1 var(--display);
+  letter-spacing: 0.005em;
+  color: var(--on-cloth);
+  white-space: nowrap;
+}
+.logo svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* While the page scrolls, rows slide under a resting cursor; their hover states wait until it
+   stops (src/lib/scrolling.ts). Only for a mouse: touch has no hover to protect. */
+@media (hover: hover) and (pointer: fine) {
+  :root[data-scrolling] main {
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Waiting for the server (Folio's track(), src/lib/waits.ts): Stichle's working mark is a little
+   fan of three cards opening and closing, the way a hand is fanned out. Calm: one motion, no bounce;
+   under reduced motion the fan stays open. */
+.ewo-wait-mark .fan {
+  width: 1.4em;
+  height: 1em;
+  overflow: visible;
+  fill: var(--paper);
+  stroke: currentColor;
+  stroke-width: 1.4;
+}
+.ewo-wait-mark .fan rect {
+  transform-box: view-box;
+  transform-origin: 14px 17px;
+  animation: fan 1.2s cubic-bezier(0.5, 0, 0.3, 1) infinite;
+}
+.ewo-wait-mark .fan .l {
+  --to: -24deg;
+}
+.ewo-wait-mark .fan .r {
+  --to: 24deg;
+}
+@keyframes fan {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  45%,
+  60% {
+    rotate: var(--to, 0deg);
+  }
+}
+:root {
+  --ewo-wait-bubble-bg: var(--ink);
+  --ewo-wait-bubble-fg: var(--paper);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ewo-wait-mark .fan rect {
+    animation: none;
+    rotate: var(--to, 0deg);
+  }
+}

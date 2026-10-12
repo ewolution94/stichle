@@ -1,0 +1,9 @@
+# For trying the image locally (it builds from source). The NAS runs deploy/portainer-stack.yml.
+services:
+  stichle:
+    build: .
+    image: ghcr.io/ewolution94/stichle:latest
+    container_name: stichle
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
