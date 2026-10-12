@@ -428,7 +428,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    margin: 14px 0 -30px;
+    margin: 22px 6px -30px;
     padding: 18px 12px 34px;
   }
   /* The far side of the table: the middle seat furthest away, the outer ones a little nearer, like
@@ -464,8 +464,8 @@
     width: 10px;
     height: 14px;
     border-radius: 1.5px;
-    background: var(--cloth-2);
-    box-shadow: 0 0 0 1px var(--gold-lo), inset 0 0 0 2px var(--cloth-3);
+    background: var(--back-ground);
+    box-shadow: 0 0 0 1px var(--back-line), inset 0 0 0 2px rgb(255 255 255 / 0.08);
     transform-origin: 50% 120%;
     rotate: calc(var(--k) * 9deg);
   }
@@ -484,10 +484,16 @@
     flex-direction: column;
     gap: 6px;
   }
+  /* On the table's near edge, whatever the table: a small dark plate of its own, so it reads on the
+     tapestry's flowers and on the vellum alike. */
   .status,
   .toast {
+    align-self: center;
+    max-width: 100%;
     margin: 0;
-    min-height: 20px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgb(18 11 7 / 0.66);
     font: 600 14px/1.3 var(--ewo-sans);
     text-align: center;
     color: var(--on-cloth-2);

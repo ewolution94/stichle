@@ -43,11 +43,15 @@ export function counted(ids: AchievementId[]) {
   if (ids.length) fresh.list = [...fresh.list, ...ids];
 }
 
-/** The look on the page: the cloth's colour and the cards' edges (the back is drawn by deck.ts). */
+/** The look on the page: the table and its room, the cards' edges, the colours of the others'
+ *  small backs (the big backs are drawn by deck.ts). The browser's bar takes the room's colour. */
 export function applyLook() {
   const root = document.documentElement;
-  root.dataset.cloth = profile.look.cloth;
+  root.dataset.table = profile.look.table;
   root.dataset.edge = profile.look.edge;
+  root.dataset.back = profile.look.back;
+  const room = getComputedStyle(root).getPropertyValue('--wood-2').trim();
+  if (room) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', room);
 }
 
 export function choose(kind: Reward['kind'], id: string) {

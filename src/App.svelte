@@ -10,6 +10,8 @@
   import Game from './components/Game.svelte';
   import Footer from './components/Footer.svelte';
   import Screen from './components/Screen.svelte';
+  import Collection from './components/Collection.svelte';
+  import Earned from './components/Earned.svelte';
 
   // The whole app is one page. "/" is the start; "/KXPT" is a table, and the link people share;
   // "/KXPT/screen" is that table on the big screen.
@@ -159,6 +161,9 @@
   <ewo-connection class="connection" state={connection} class:in-game={playing}></ewo-connection>
 {/if}
 {/if}
+
+<Collection />
+<Earned />
 
 <style>
   /* The connection pill (Folio's <ewo-connection>): under the bar, or at the top of the game's stage. */

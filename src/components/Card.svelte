@@ -4,16 +4,22 @@
   the back. The paper grain sits on top (main.ts makes it once).
 -->
 <script lang="ts">
+  import type { BackId } from '../lib/achievements';
   import { card, fromId } from '../lib/deck';
   import { i18n } from '../lib/i18n.svelte';
   import { prefs } from '../lib/prefs.svelte';
   import { profile } from '../lib/profile.svelte';
   import { nextUid } from '../lib/table';
 
-  let { id = null, back = false, glare = false }: { id?: string | null; back?: boolean; glare?: boolean } = $props();
+  let {
+    id = null,
+    back = false,
+    glare = false,
+    previewBack = null,
+  }: { id?: string | null; back?: boolean; glare?: boolean; previewBack?: BackId | null } = $props();
 
   const uid = nextUid();
-  const svg = $derived(card(back ? { k: 'back' } : fromId(id), { lang: i18n.lang, uid, art: prefs.art, back: profile.look.back }));
+  const svg = $derived(card(back ? { k: 'back' } : fromId(id), { lang: i18n.lang, uid, art: prefs.art, back: previewBack ?? profile.look.back }));
 </script>
 
 <div class="face">

@@ -9,7 +9,7 @@ test('every achievement unlocks one look, and no look is unlocked twice', () => 
   const rewards = ACHIEVEMENTS.map((a) => `${a.reward.kind}:${a.reward.id}`);
   assert.equal(new Set(rewards).size, rewards.length);
   assert.equal(ACHIEVEMENTS.length, 12);
-  for (const kind of ['back', 'cloth', 'edge']) assert.ok(!rewards.includes(`${kind}:${DEFAULT_LOOK[kind]}`));
+  for (const kind of ['back', 'table', 'edge']) assert.ok(!rewards.includes(`${kind}:${DEFAULT_LOOK[kind]}`));
 });
 
 test('a round is counted once, however often the page sees it', () => {
@@ -71,12 +71,22 @@ test('a finished game: the first win, a perfect game, a comeback, a full table, 
 
 test('a look is chosen only once it is unlocked, also from a pasted code', () => {
   const r = emptyRecord();
-  assert.ok(unlocked(r, 'cloth', 'ultramarin'));
-  assert.ok(!unlocked(r, 'cloth', 'bordeaux'));
-  const forged = cleanRecord({ ...r, look: { back: 'gold', cloth: 'bordeaux', edge: 'gold' }, games: 'many', earned: { madeUp: 1 } });
+  assert.ok(unlocked(r, 'table', 'spieltisch'));
+  assert.ok(!unlocked(r, 'table', 'millefleurs'));
+  const forged = cleanRecord({ ...r, look: { back: 'gold', table: 'millefleurs', edge: 'gold' }, games: 'many', earned: { madeUp: 1 } });
   assert.deepEqual(forged.look, DEFAULT_LOOK);
   assert.equal(forged.games, 0);
   assert.deepEqual(forged.earned, {});
-  const fair = cleanRecord({ ...r, earned: { firstWin: 5 }, look: { back: 'ultramarin', cloth: 'bordeaux', edge: 'plain' } });
-  assert.equal(fair.look.cloth, 'bordeaux');
+  const fair = cleanRecord({ ...r, earned: { firstWin: 5 }, look: { back: 'ultramarin', table: 'millefleurs', edge: 'plain' } });
+  assert.equal(fair.look.table, 'millefleurs');
+});
+
+test('what a first game most often brings unlocks the three other tables', () => {
+  const first = ['trumpKing', 'lastRound', 'firstWin'];
+  assert.deepEqual(ACHIEVEMENTS.slice(0, 3).map((a) => a.id), first);
+  assert.deepEqual(ACHIEVEMENTS.slice(0, 3).map((a) => a.reward), [
+    { kind: 'table', id: 'burgtafel' },
+    { kind: 'table', id: 'pergament' },
+    { kind: 'table', id: 'millefleurs' },
+  ]);
 });

@@ -308,7 +308,7 @@
     position: relative;
     min-height: 0;
   }
-  /* The table itself: a slightly lighter oval of cloth with a gold hairline. */
+  /* The table itself, as this screen's device chose it (src/app.css → the tables), as an oval. */
   .oval {
     position: absolute;
     inset: 8% 6%;

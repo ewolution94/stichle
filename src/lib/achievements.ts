@@ -21,9 +21,11 @@ export type AchievementId =
   | 'fullTable';
 
 export type BackId = 'ultramarin' | 'bordeaux' | 'waldgruen' | 'nacht' | 'gold' | 'silber' | 'kupfer';
-export type ClothId = 'ultramarin' | 'bordeaux' | 'waldgruen' | 'schiefer' | 'nacht' | 'kupfer';
+/** The table you play on and the room round it (src/app.css): the card table for everyone, the
+ *  tapestry, the vellum and the slate as the first unlocks, two more baizes for the rarer ones. */
+export type TableId = 'spieltisch' | 'millefleurs' | 'pergament' | 'burgtafel' | 'karmesin' | 'nachtblau';
 export type EdgeId = 'plain' | 'gold';
-export type Reward = { kind: 'back'; id: BackId } | { kind: 'cloth'; id: ClothId } | { kind: 'edge'; id: EdgeId };
+export type Reward = { kind: 'back'; id: BackId } | { kind: 'table'; id: TableId } | { kind: 'edge'; id: EdgeId };
 
 export interface Achievement {
   id: AchievementId;
@@ -34,17 +36,18 @@ export interface Achievement {
   reward: Reward;
 }
 
-/** In the order the collection shows them: the first steps, then the craft, then the rare ones. */
+/** In the order the collection shows them: the first steps, then the craft, then the rare ones. The
+ *  three a first game most often brings unlock the three other tables. */
 export const ACHIEVEMENTS: Achievement[] = [
-  { id: 'firstWin', glyph: '1', reward: { kind: 'cloth', id: 'bordeaux' } },
+  { id: 'trumpKing', glyph: '13', reward: { kind: 'table', id: 'burgtafel' } },
+  { id: 'lastRound', glyph: 'Ω', reward: { kind: 'table', id: 'pergament' } },
+  { id: 'firstWin', glyph: '1', reward: { kind: 'table', id: 'millefleurs' } },
   { id: 'tenGames', glyph: '10', goal: 10, reward: { kind: 'back', id: 'bordeaux' } },
-  { id: 'streak5', glyph: '5', goal: 5, reward: { kind: 'cloth', id: 'waldgruen' } },
+  { id: 'streak5', glyph: '5', goal: 5, reward: { kind: 'table', id: 'karmesin' } },
   { id: 'zeroWizard', glyph: '0', reward: { kind: 'back', id: 'waldgruen' } },
-  { id: 'lastRound', glyph: 'Ω', reward: { kind: 'cloth', id: 'nacht' } },
   { id: 'bigBid', glyph: '8+', reward: { kind: 'back', id: 'kupfer' } },
-  { id: 'trumpKing', glyph: '13', reward: { kind: 'back', id: 'silber' } },
-  { id: 'jesterTrick', glyph: 'N', reward: { kind: 'cloth', id: 'schiefer' } },
-  { id: 'comeback', glyph: '↑', reward: { kind: 'cloth', id: 'kupfer' } },
+  { id: 'jesterTrick', glyph: 'N', reward: { kind: 'back', id: 'silber' } },
+  { id: 'comeback', glyph: '↑', reward: { kind: 'table', id: 'nachtblau' } },
   { id: 'fullTable', glyph: '6', reward: { kind: 'back', id: 'nacht' } },
   { id: 'perfect', glyph: '✓', reward: { kind: 'edge', id: 'gold' } },
   { id: 'fourWizards', glyph: 'Z', reward: { kind: 'back', id: 'gold' } },
@@ -52,11 +55,11 @@ export const ACHIEVEMENTS: Achievement[] = [
 
 export interface Look {
   back: BackId;
-  cloth: ClothId;
+  table: TableId;
   edge: EdgeId;
 }
 
-export const DEFAULT_LOOK: Look = { back: 'ultramarin', cloth: 'ultramarin', edge: 'plain' };
+export const DEFAULT_LOOK: Look = { back: 'ultramarin', table: 'spieltisch', edge: 'plain' };
 
 export interface PlayerRecord {
   v: 1;
@@ -101,7 +104,7 @@ export function cleanRecord(raw: unknown): PlayerRecord {
   };
   // A look is kept only when it's unlocked (a pasted code can't skip that).
   const look = r.look ?? DEFAULT_LOOK;
-  for (const kind of ['back', 'cloth', 'edge'] as const) {
+  for (const kind of ['back', 'table', 'edge'] as const) {
     const id = look[kind];
     if (typeof id === 'string' && unlocked(record, kind, id)) (record.look as unknown as Record<string, string>)[kind] = id;
   }

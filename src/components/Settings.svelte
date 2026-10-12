@@ -14,6 +14,9 @@
   import { prefs, setArt } from '../lib/prefs.svelte';
   import type { Art } from '../lib/deck';
   import { play, setSound, sound } from '../lib/sound.svelte';
+  import { earnedCount } from '../lib/profile.svelte';
+  import { ACHIEVEMENTS } from '../lib/achievements';
+  import { ui } from '../lib/ui.svelte';
   import { actAt } from '../lib/waits';
 
   let {
@@ -124,6 +127,10 @@
     <section>
       <h3 class="label">Stichle</h3>
       <div class="row">
+        <span class="name">{t('yourCollection')}<small>{t('earnedOf', { n: earnedCount(), of: ACHIEVEMENTS.length })}</small></span>
+        <button class="btn small" type="button" onclick={() => (onclose(), (ui.collection = true))}>{t('collection')}</button>
+      </div>
+      <div class="row">
         <span class="name">{t('cardArt')}</span>
         <ewo-segmented stretch value={prefs.art} label={t('cardArt')} onchange={(e) => setArt(e.detail.value as Art)}>
           <option value="figures">{t('art_figures')}</option>
@@ -184,6 +191,10 @@
     flex-direction: column;
     gap: 2px;
     font-size: 14px;
+  }
+  .name small {
+    font-size: 12px;
+    color: var(--mute);
   }
   ewo-segmented {
     flex: none;

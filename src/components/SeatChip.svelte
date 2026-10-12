@@ -132,7 +132,7 @@
     border-radius: 50%;
     box-shadow: 0 2px 6px -2px rgb(0 0 0 / 0.6);
   }
-  /* The dealer's deck: two small cards, dark, gold-edged. */
+  /* The dealer's deck: two small cards in the backs' colours. */
   .dealer {
     position: absolute;
     right: -6px;
@@ -140,11 +140,11 @@
     width: 12px;
     height: 16px;
     border-radius: 2px;
-    background: var(--cloth);
+    background: var(--back-ground);
     box-shadow:
-      -3px -2px 0 -1px var(--cloth),
-      -3px -2px 0 0 var(--gold),
-      0 0 0 1px var(--gold);
+      -3px -2px 0 -1px var(--back-ground),
+      -3px -2px 0 0 var(--back-line),
+      0 0 0 1px var(--back-line);
   }
   .info {
     position: relative;

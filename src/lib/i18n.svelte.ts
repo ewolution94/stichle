@@ -217,12 +217,17 @@ const STRINGS = {
     achievements: 'Erfolge',
     look: 'Aussehen',
     lookBack: 'Rückseite',
-    lookCloth: 'Tuch',
+    lookTable: 'Tisch',
     lookEdge: 'Kartenschnitt',
     look_ultramarin: 'Ultramarin',
     look_bordeaux: 'Bordeaux',
     look_waldgruen: 'Waldgrün',
-    look_schiefer: 'Schiefer',
+    look_spieltisch: 'Spieltisch',
+    look_millefleurs: 'Millefleurs',
+    look_pergament: 'Pergament',
+    look_burgtafel: 'Burgtafel',
+    look_karmesin: 'Karmesin',
+    look_nachtblau: 'Nachtblau',
     look_nacht: 'Nacht',
     look_kupfer: 'Kupfer',
     look_gold: 'Gold',
@@ -475,12 +480,17 @@ const STRINGS = {
     achievements: 'Achievements',
     look: 'Look',
     lookBack: 'Back',
-    lookCloth: 'Cloth',
+    lookTable: 'Table',
     lookEdge: 'Edges',
     look_ultramarin: 'Ultramarine',
     look_bordeaux: 'Bordeaux',
     look_waldgruen: 'Forest',
-    look_schiefer: 'Slate',
+    look_spieltisch: 'Card table',
+    look_millefleurs: 'Millefleurs',
+    look_pergament: 'Parchment',
+    look_burgtafel: 'Castle slate',
+    look_karmesin: 'Crimson',
+    look_nachtblau: 'Midnight',
     look_nacht: 'Night',
     look_kupfer: 'Copper',
     look_gold: 'Gold',
@@ -578,9 +588,9 @@ export function errorText(code: string): string {
   return key in STRINGS.de ? t(key) : t('error:other');
 }
 
-/** A look's name, with what kind it is: "Tuch: Bordeaux". */
-export function rewardName(reward: { kind: 'back' | 'cloth' | 'edge'; id: string }) {
-  const kind = t(reward.kind === 'back' ? 'lookBack' : reward.kind === 'cloth' ? 'lookCloth' : 'lookEdge');
+/** A look's name, with what kind it is: "Tisch: Pergament". */
+export function rewardName(reward: { kind: 'back' | 'table' | 'edge'; id: string }) {
+  const kind = t(reward.kind === 'back' ? 'lookBack' : reward.kind === 'table' ? 'lookTable' : 'lookEdge');
   const id = reward.kind === 'edge' && reward.id === 'gold' ? 'gold' : reward.id;
   return `${kind}: ${t(`look_${id}` as Key)}`;
 }

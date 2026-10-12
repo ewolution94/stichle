@@ -7,6 +7,9 @@
   import { errorText, t } from '../lib/i18n.svelte';
   import { saveAvatar, savedAvatar, savedName } from '../lib/session';
   import { newKey, waitAt } from '../lib/waits';
+  import { earnedCount } from '../lib/profile.svelte';
+  import { ACHIEVEMENTS } from '../lib/achievements';
+  import { ui } from '../lib/ui.svelte';
   import AvatarMaker from './AvatarMaker.svelte';
 
   /** `oncreate` resolves once the new room's lobby can show (its first view): the button waits for that. */
@@ -80,6 +83,10 @@
     </div>
   </form>
 
+  <button class="btn ghost collection" type="button" onclick={() => (ui.collection = true)}>
+    {t('yourCollection')} · {t('earnedOf', { n: earnedCount(), of: ACHIEVEMENTS.length })}
+  </button>
+
   <details class="rules on-cloth">
     <summary class="label">{t('rules')}</summary>
     <p>{t('rulesDeck')}</p>
@@ -130,6 +137,9 @@
     font-family: var(--ewo-mono);
     letter-spacing: 0.3em;
     text-transform: uppercase;
+  }
+  .collection {
+    align-self: flex-start;
   }
   .rules {
     padding: 0 4px;

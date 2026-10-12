@@ -9,6 +9,7 @@
   import Lobby from './Lobby.svelte';
   import Table from './Table.svelte';
   import Sounds from './Sounds.svelte';
+  import Tracker from './Tracker.svelte';
 
   let { room, onleave, onrejoin }: { room: Room; onleave: () => void; onrejoin: () => void } = $props();
 
@@ -36,6 +37,7 @@
 </script>
 
 <Sounds {room} />
+<Tracker {room} />
 
 {#if !view}
   <p class="label wait">{t(room.wasLive ? 'reconnecting' : 'connecting')}</p>

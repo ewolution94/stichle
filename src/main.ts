@@ -46,7 +46,7 @@ try {
   // cards without grain
 }
 
-// The cloth and the cards' edges this device chose, before the first paint of the table.
+// The table, the backs and the edges this device chose, before the first paint.
 applyLook();
 
 function start() {
