@@ -69,8 +69,9 @@
   function target(card: string) {
     if (!trickEl || mine < 0) return null;
     const r = trickEl.getBoundingClientRect();
-    const { dx, dy } = slotOffset(angleOf(mine, mine, n), r.width, r.height);
-    return { x: r.left + r.width / 2 + dx, y: r.top + r.height / 2 + dy, rot: Number(twist(card, mine)), width: trickCardWidth(r.width, r.height) };
+    const width = trickCardWidth(r.width, r.height);
+    const { dx, dy } = slotOffset(angleOf(mine, mine, n), width);
+    return { x: r.left + r.width / 2 + dx, y: r.top + r.height / 2 + dy, rot: Number(twist(card, mine)), width };
   }
 
   let error = $state('');
@@ -407,14 +408,16 @@
     rotate: calc(var(--k) * 9deg);
   }
 
+  /* The pile's room: whatever the rest leaves. While you bid it's empty anyway, so it gives way. */
   .middle {
     position: relative;
     flex: 1 1 auto;
-    min-height: 150px;
+    min-height: 0;
   }
 
   .dock {
     position: relative;
+    flex: none;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -461,6 +464,10 @@
     grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
     gap: 6px;
   }
+  .numbers.many {
+    grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+    gap: 5px;
+  }
   .num {
     min-height: 46px;
     border: 1.5px solid var(--ink);
@@ -471,8 +478,8 @@
     font-size: 20px;
   }
   .numbers.many .num {
-    min-height: 40px;
-    font-size: 17px;
+    min-height: 38px;
+    font-size: 16px;
   }
   @media (hover: hover) {
     .num:hover {

@@ -21,18 +21,29 @@ export function angleOf(seat: number, mine: number, n: number) {
   return place === 0 ? 90 : 180 + (place * 180) / n;
 }
 
-/** A small, steady twist for a card on the table, so a trick looks dropped, not aligned. */
+/** A steady twist for a card on the pile (from its id, so every page agrees), so a trick looks dropped. */
 export function twist(card: string, seat: number) {
   let h = seat * 7919;
   for (const ch of card) h = (h * 31 + ch.charCodeAt(0)) | 0;
-  return ((Math.abs(h) % 1700) / 100 - 8.5).toFixed(1);
+  return ((Math.abs(h) % 2200) / 100 - 11).toFixed(1);
 }
 
-/** How big a card is in the middle of the table, for a trick area of w × h px. */
-export const trickCardWidth = (w: number, h: number) => Math.round(Math.min(96, w * 0.22, (h * 0.4) / 1.4));
+/** How big a card is on the pile in the middle, for a trick area of w × h px. */
+export const trickCardWidth = (w: number, h: number) => Math.round(Math.min(100, w * 0.27, (h * 0.5) / 1.4));
 
-/** Where a seat's card lies in the trick, from the area's centre. */
-export function slotOffset(angle: number, w: number, h: number) {
+/**
+ * Where a seat's card lies on the pile, from the area's centre: a stack, each card nudged towards the
+ * seat that played it. The nudge is about a third of a card, which is what keeps one of its two
+ * corner indices in view under the cards that came after (left or up shows the top-left one, right or
+ * down the bottom-right one).
+ */
+export function slotOffset(angle: number, cardWidth: number) {
   const rad = (angle * Math.PI) / 180;
-  return { dx: Math.cos(rad) * w * 0.25, dy: Math.sin(rad) * h * 0.25 };
+  return { dx: Math.cos(rad) * cardWidth * 0.36, dy: Math.sin(rad) * cardWidth * 1.4 * 0.27 };
+}
+
+/** Off the table towards a seat: where a taken trick sweeps to. */
+export function sweepOffset(angle: number, w: number, h: number) {
+  const rad = (angle * Math.PI) / 180;
+  return { dx: Math.cos(rad) * w * 0.75, dy: Math.sin(rad) * h * 0.75 };
 }

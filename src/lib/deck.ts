@@ -20,10 +20,15 @@ export type Face = { k: 'num'; s: Suit; v: number } | { k: 'z'; s: Suit } | { k:
 export const SUITS: Suit[] = ['fire', 'water', 'earth', 'air'];
 type Shape = 'tri' | 'circle' | 'square' | 'diamond';
 export const SHAPE: Record<Suit, Shape> = { fire: 'tri', water: 'circle', earth: 'square', air: 'diamond' };
-/** The four inks on paper. */
-export const INK: Record<Suit, string> = { fire: '#c23a22', water: '#1f3c8f', earth: '#1d6849', air: '#a87405' };
+/**
+ * The four inks on paper, chosen to tell apart at a glance on a phone (the user, 2026-10-12): a true
+ * red, a cobalt blue, a fresh green and a golden yellow, far apart in hue and not all dark.
+ */
+export const INK: Record<Suit, string> = { fire: '#cc2b2b', water: '#1c5bc4', earth: '#17834a', air: '#c99700' };
+/** Each suit's paper, lightly tinted with its ink, so even a sliver of a card in the hand reads as its suit. */
+export const TINT: Record<Suit, string> = { fire: '#fbe9e6', water: '#e8effb', earth: '#e6f3ea', air: '#fbf1d6' };
 /** The same, brighter, for marks on black and ultramarine. */
-export const LUM: Record<Suit, string> = { fire: '#e8573b', water: '#5f8ae8', earth: '#46ae79', air: '#e9b032' };
+export const LUM: Record<Suit, string> = { fire: '#f0594a', water: '#6f9cf5', earth: '#4cc07e', air: '#f2c02c' };
 export const PAPER = '#f8f6f1';
 export const BLACK = '#1c1a22';
 export const ULTRAMARINE = '#1d2b62';
@@ -162,10 +167,10 @@ const label = (txt: string, fill: string) => `<text x="125" y="318" text-anchor=
 export function card(c: Face, { lang = 'de', uid = 0 }: { lang?: Lang; uid?: number | string } = {}) {
   const t = WORDS[lang], u = String(uid);
   if (c.k === 'num') {
-    const ink = INK[c.s], sh = SHAPE[c.s], size = c.v > 9 ? 84 : 96;
-    return svg('', `<rect width="250" height="350" rx="14" fill="${PAPER}"/>${frames(ink)}
+    const ink = INK[c.s], tint = TINT[c.s], sh = SHAPE[c.s], size = c.v > 9 ? 84 : 96;
+    return svg('', `<rect width="250" height="350" rx="14" fill="${tint}"/>${frames(ink)}
       <use href="#st-ros-${c.v}" fill="none" stroke="${ink}" stroke-width=".55" opacity=".5"/>
-      <circle cx="125" cy="175" r="57" fill="${PAPER}" stroke="${ink}" stroke-width=".9"/>
+      <circle cx="125" cy="175" r="57" fill="${tint}" stroke="${ink}" stroke-width=".9"/>
       <circle cx="125" cy="175" r="84" fill="none" stroke="${ink}" stroke-width=".9"/>
       <text x="125" y="${f(175 + size * .35)}" text-anchor="middle" ${BODONI} font-weight="700" font-size="${size}" style="font-variation-settings:'opsz' 72" fill="${ink}" filter="url(#st-press)">${c.v}</text>
       <path d="${shapeD(sh, 125, 72, 13)}" fill="${ink}"/>

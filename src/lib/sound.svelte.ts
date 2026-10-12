@@ -1,14 +1,14 @@
-// Sounds, made on the spot with Web Audio: no files, no third parties. On by default, switched per
-// device in Settings (`stichle:sound`). A browser only plays sound after a tap, so the context starts
+// Sounds, made on the spot with Web Audio: no files, no third parties. Off by default (the user,
+// 2026-10-12), switched on per device in Settings (`stichle:sound`). A browser only plays sound after a tap, so the context starts
 // on the first pointer or key press. On a call each device plays its own.
 
 const KEY = 'stichle:sound';
 
 function stored() {
   try {
-    return localStorage.getItem(KEY) !== 'off';
+    return localStorage.getItem(KEY) === 'on';
   } catch {
-    return true;
+    return false;
   }
 }
 

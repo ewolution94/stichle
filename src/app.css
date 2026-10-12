@@ -26,14 +26,14 @@
   --line: #c9c1ae;
 
   /* The four inks, as on the cards (src/lib/deck.ts), and brighter for the cloth. */
-  --fire: #c23a22;
-  --water: #1f3c8f;
-  --earth: #1d6849;
-  --air: #a87405;
-  --fire-lum: #e8573b;
-  --water-lum: #7ea0f0;
-  --earth-lum: #52b884;
-  --air-lum: #e9b032;
+  --fire: #cc2b2b;
+  --water: #1c5bc4;
+  --earth: #17834a;
+  --air: #c99700;
+  --fire-lum: #f0594a;
+  --water-lum: #7ea6f5;
+  --earth-lum: #4cc07e;
+  --air-lum: #f2c02c;
 
   --gold: #c9a24a;
   --gold-hi: #f3dc94;

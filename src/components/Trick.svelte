@@ -8,7 +8,7 @@
   import type { FinishedTrick, Trick } from '../lib/api';
   import { flight } from '../lib/flight.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { angleOf, slotOffset, trickCardWidth, twist } from '../lib/table';
+  import { angleOf, slotOffset, sweepOffset, trickCardWidth, twist } from '../lib/table';
   import Card from './Card.svelte';
 
   let {
@@ -53,14 +53,20 @@
   const cw = $derived(trickCardWidth(width, height));
 
   function place(seat: number) {
-    const { dx, dy } = slotOffset(angleOf(seat, mine, n), width, height);
+    const { dx, dy } = slotOffset(angleOf(seat, mine, n), cw);
     return { x: width / 2 + dx - cw / 2, y: height / 2 + dy - (cw * 1.4) / 2 };
+  }
+
+  /** Where a card comes from as it lands: from its player's side of the table. */
+  function from(seat: number) {
+    const { dx, dy } = sweepOffset(angleOf(seat, mine, n), width * 0.25, height * 0.25);
+    return { x: dx, y: dy };
   }
 
   /** Off towards the winner's seat, a little further out than their card lay. */
   const away = $derived.by(() => {
     if (!last) return { x: 0, y: 0 };
-    const { dx, dy } = slotOffset(angleOf(last.winner, mine, n), width * 3.2, height * 3.2);
+    const { dx, dy } = sweepOffset(angleOf(last.winner, mine, n), width, height);
     return { x: dx, y: dy };
   });
 </script>
@@ -82,6 +88,8 @@
       style:--r="{twist(played.card, played.seat)}deg"
       style:--ax="{away.x}px"
       style:--ay="{away.y}px"
+      style:--fx="{from(played.seat).x}px"
+      style:--fy="{from(played.seat).y}px"
       style:visibility={hidden ? 'hidden' : 'visible'}
     >
       <Card id={played.card} />
@@ -108,14 +116,12 @@
   .played.mine {
     animation: none;
   }
+  /* Dropped onto the pile from its player's side: a little bigger, a little further out, then down. */
   @keyframes land {
     from {
-      scale: 1.18;
+      translate: var(--fx) var(--fy);
+      scale: 1.16;
       opacity: 0;
-    }
-    to {
-      scale: 1;
-      opacity: 1;
     }
   }
   /* The trick's winner catches the light: a gold ring and a lift. */

@@ -312,7 +312,7 @@
   }
   /* Not playable now: the paper darkens a little, as if in shadow. */
   .slot.dim {
-    filter: brightness(0.72) saturate(0.7);
+    filter: brightness(0.74) saturate(0.85);
   }
   .slot.dragging {
     transition: none;
