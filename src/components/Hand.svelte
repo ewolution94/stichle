@@ -64,7 +64,9 @@
 
   const fan = $derived(cards.filter((c) => c !== air?.card));
   // Few cards are held bigger; a full hand shrinks to fit, never below 62 px.
-  const cw = $derived(Math.round(Math.max(62, Math.min(cards.length <= 3 ? 104 : cards.length <= 6 ? 92 : 84, width / (cards.length * 0.62 + 0.6)))));
+  // On a laptop's wider table they may grow a little more.
+  const cap = $derived(width > 600 ? [124, 112, 100] : [104, 92, 84]);
+  const cw = $derived(Math.round(Math.max(62, Math.min(cards.length <= 3 ? cap[0] : cards.length <= 6 ? cap[1] : cap[2], width / (cards.length * 0.62 + 0.6)))));
   const ch = $derived(Math.round(cw * 1.4));
   const rows = $derived(fan.length > 1 && (width - 8 - cw) / (fan.length - 1) < 24 ? 2 : 1);
   const height = $derived(rows === 2 ? Math.round(ch * 1.45) + 30 : ch + 30);

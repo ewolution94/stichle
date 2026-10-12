@@ -37,7 +37,7 @@
     <span class="name">{me ? t('you') : (player?.name ?? '?')}</span>
     <span class="line">
       {#if bidValue === null}
-        <span class="bid wait">{active && game.stage === 'bid' ? t('bidding') : '–'}</span>
+        {#if active && game.stage === 'bid'}<span class="bid wait">{t('bidding')}</span>{/if}
       {:else}
         <span class="bid" class:met class:over aria-label={t('bidWon', { bid: bidValue, won })}>
           {#if pips <= 6}

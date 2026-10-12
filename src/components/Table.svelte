@@ -108,6 +108,18 @@
     }
   }
 
+  // A move the server took is done at once: its panel goes, even if the room's update (which moves
+  // the turn on) is a moment behind the answer. Without this a second tap in that moment sent the
+  // bid again and earned "not your turn" (found by the QA run, 2026-10-12).
+  const moveKey = $derived(`${game.n}:${game.round}:${game.stage}:${game.turn}`);
+  let sent = $state('');
+  async function decide(action: string, body: unknown, from: Event) {
+    const key = moveKey;
+    await act(action, body, from);
+    sent = key;
+  }
+  const deciding = $derived(myTurn && sent !== moveKey);
+
   function refused(card: string) {
     if (!myTurn) return say(t('notYourTurn'));
     if (holding) return;
@@ -204,18 +216,18 @@
       <p class="status" class:mine={myTurn} aria-live="polite">{status}</p>
     {/if}
 
-    {#if myTurn && game.stage === 'trump'}
+    {#if deciding && game.stage === 'trump'}
       <div class="panel sheet">
         <span class="label">{t('pickTrump')}</span>
         <div class="suits">
           {#each SUITS as suit (suit)}
-            <button class="btn suitbtn" type="button" onclick={(e) => act('trump', { suit }, e).catch(() => {})}>
+            <button class="btn suitbtn" type="button" onclick={(e) => decide('trump', { suit }, e).catch(() => {})}>
               <span class="suit {suit}" aria-hidden="true"></span>{suitName(suit)}
             </button>
           {/each}
         </div>
       </div>
-    {:else if myTurn && game.stage === 'bid'}
+    {:else if deciding && game.stage === 'bid'}
       <div class="panel sheet bid">
         <span class="label">{t('yourBid')}</span>
         <div class="dial">
@@ -231,7 +243,7 @@
           </button>
         </div>
         <span class="sofar">{t('bidsSoFar', { sum: bidsSoFar, n: game.round })}</span>
-        <button class="btn primary block" type="button" onclick={(e) => act('bid', { n: pick }, e).catch(() => {})}>{t('bidThis', { n: pick })}</button>
+        <button class="btn primary block" type="button" onclick={(e) => decide('bid', { n: pick }, e).catch(() => {})}>{t('bidThis', { n: pick })}</button>
       </div>
     {/if}
 
@@ -468,6 +480,9 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    align-self: center;
+    width: 100%;
+    max-width: 440px;
     padding: 14px 14px 14px;
     animation: rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
   }
