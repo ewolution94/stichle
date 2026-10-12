@@ -29,7 +29,7 @@ export function twist(card: string, seat: number) {
 }
 
 /** How big a card is on the pile in the middle, for a trick area of w × h px. */
-export const trickCardWidth = (w: number, h: number) => Math.round(Math.min(w > 600 ? 120 : 100, w * 0.27, (h * 0.5) / 1.4));
+export const trickCardWidth = (w: number, h: number, cap = w > 600 ? 120 : 100) => Math.round(Math.min(cap, w * 0.27, (h * 0.5) / 1.4));
 
 /**
  * Where a seat's card lies on the pile, from the area's centre: a stack, each card nudged towards the

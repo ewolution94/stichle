@@ -20,6 +20,7 @@
     n,
     width = $bindable(320),
     height = $bindable(260),
+    cap = undefined,
   }: {
     room: Room;
     trick: Trick;
@@ -29,6 +30,8 @@
     n: number;
     width?: number;
     height?: number;
+    /** The largest a card may be (the big screen's are bigger). */
+    cap?: number;
   } = $props();
 
   let now = $state(Date.now());
@@ -50,7 +53,7 @@
   const showLast = $derived(!trick.cards.length && last !== null && room.left(holdUntil, now) > -SWEEP);
   const sweeping = $derived(showLast && room.left(holdUntil, now) <= 0);
   const shown = $derived(trick.cards.length ? trick.cards : showLast && last ? last.cards : []);
-  const cw = $derived(trickCardWidth(width, height));
+  const cw = $derived(trickCardWidth(width, height, cap));
 
   function place(seat: number) {
     const { dx, dy } = slotOffset(angleOf(seat, mine, n), cw);

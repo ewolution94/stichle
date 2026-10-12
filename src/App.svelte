@@ -9,10 +9,13 @@
   import Join from './components/Join.svelte';
   import Game from './components/Game.svelte';
   import Footer from './components/Footer.svelte';
+  import Screen from './components/Screen.svelte';
 
-  // The whole app is one page. "/" is the start; "/KXPT" is a table, and the link people share.
+  // The whole app is one page. "/" is the start; "/KXPT" is a table, and the link people share;
+  // "/KXPT/screen" is that table on the big screen.
   let path = $state(location.pathname);
   const code = $derived(codeFrom(path));
+  const screenCode = $derived(screenFrom(path));
   let room: Room | null = $state.raw(null);
   /** Arriving at a room with a saved seat: reclaiming it before anything shows. */
   let reclaiming = $state(false);
@@ -26,6 +29,11 @@
   function codeFrom(p: string) {
     const segment = p.replace(/^\/+|\/+$/g, '').toUpperCase();
     return CODE.test(segment) ? segment : null;
+  }
+
+  function screenFrom(p: string) {
+    const match = /^\/([a-z]{4})\/screen\/?$/i.exec(p);
+    return match && CODE.test(match[1].toUpperCase()) ? match[1].toUpperCase() : null;
   }
 
   function go(to: string, replace = false) {
@@ -103,7 +111,7 @@
 
   onMount(() => {
     // An unknown path (an old link, a typo) is the start page.
-    if (!code && path !== '/') go('/', true);
+    if (!code && !screenCode && path !== '/') go('/', true);
     const onPop = () => (path = location.pathname);
     addEventListener('popstate', onPop);
     loadCensus();
@@ -111,6 +119,11 @@
   });
 </script>
 
+{#if screenCode}
+  {#key screenCode}
+    <Screen code={screenCode} />
+  {/key}
+{:else}
 <!-- A game has its own table (Table.svelte) that fills the screen. -->
 {#if !playing}<Bar code={room ? room.code : null} />{/if}
 
@@ -144,6 +157,7 @@
 <!-- A room that's gone (a deploy, or forgotten) closed its stream on purpose: no pill, nothing to reconnect. -->
 {#if room?.view?.phase !== 'gone'}
   <ewo-connection class="connection" state={connection} class:in-game={playing}></ewo-connection>
+{/if}
 {/if}
 
 <style>

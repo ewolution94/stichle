@@ -157,6 +157,9 @@
     </div>
     <span class="url">{link}</span>
     {#if qrOpen}<div class="qr"><Qr url={link} /></div>{/if}
+    <!-- The big screen is for a projector or a shared window: a phone is never it. -->
+    <a class="screenlink" href="/{view.code}/screen" target="_blank" rel="noopener">{t('bigScreen')} ↗</a>
+    <span class="hint screenhint">{t('bigScreenHint')}</span>
   </section>
 
   <section class="sheet seats">
@@ -293,6 +296,20 @@
   .qr {
     width: min(220px, 70%);
     margin: 4px auto 0;
+  }
+  .screenlink,
+  .screenhint {
+    display: none;
+  }
+  @media (min-width: 900px) {
+    .screenlink {
+      display: inline;
+      font-weight: 600;
+      color: var(--water);
+    }
+    .screenhint {
+      display: block;
+    }
   }
   .seathead {
     display: flex;

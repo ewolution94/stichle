@@ -59,7 +59,13 @@ async function overflow(p, label) {
 }
 
 let shot = 0;
+/** The big screen, when SCREEN=WxH is set: a third page on /<code>/screen, shot beside the host. */
+let screen = null;
 async function snap(p, label) {
+  if (screen && p === host) await snapOne(screen, label);
+  await snapOne(p, label);
+}
+async function snapOne(p, label) {
   await p.page.waitForTimeout(450);
   await p.page.screenshot({ path: `${OUT}${String(++shot).padStart(2, '0')}-${p.name}-${label}.png` });
   await overflow(p, label);
@@ -77,6 +83,16 @@ for (const [p, s] of [[host, seat], [guest, gseat]]) {
   await p.page.goto(`${BASE}/${seat.code}`, { waitUntil: 'load' });
 }
 await host.page.waitForSelector('.lobby');
+if (process.env.SCREEN) {
+  const [sw, sh] = process.env.SCREEN.split('x').map(Number);
+  const context = await browser.newContext({ viewport: { width: sw, height: sh } });
+  const page = await context.newPage();
+  page.on('console', (m) => m.type() === 'error' && problems.push(`screen console: ${m.text()}`));
+  page.on('pageerror', (e) => problems.push(`screen pageerror: ${e.message}`));
+  await page.goto(`${BASE}/${seat.code}/screen`, { waitUntil: 'load' });
+  await page.waitForSelector('.screen');
+  screen = { name: 'screen', context, page };
+}
 await api(host.page, `/api/rooms/${seat.code}/bot`, { add: true }, seat.token);
 await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING }, seat.token);
 await snap(host, 'lobby');
