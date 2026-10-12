@@ -11,6 +11,8 @@
   import { ApiError } from '../lib/api';
   import { errorText, i18n, setLanguage, systemLang, t, type LangChoice } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
+  import { prefs, setArt } from '../lib/prefs.svelte';
+  import type { Art } from '../lib/deck';
   import { play, setSound, sound } from '../lib/sound.svelte';
   import { actAt } from '../lib/waits';
 
@@ -121,6 +123,13 @@
     </section>
     <section>
       <h3 class="label">Stichle</h3>
+      <div class="row">
+        <span class="name">{t('cardArt')}</span>
+        <ewo-segmented stretch value={prefs.art} label={t('cardArt')} onchange={(e) => setArt(e.detail.value as Art)}>
+          <option value="figures">{t('art_figures')}</option>
+          <option value="classic">{t('art_classic')}</option>
+        </ewo-segmented>
+      </div>
       <div class="row">
         <span class="name">{t('soundsHint')}</span>
         <ewo-switch

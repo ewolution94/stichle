@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
   import type { View } from '../lib/api';
-  import { t } from '../lib/i18n.svelte';
+  import { score, t } from '../lib/i18n.svelte';
   import Avatar from './Avatar.svelte';
 
   let { open, view, onclose }: { open: boolean; view: View; onclose: () => void } = $props();
@@ -49,7 +49,7 @@
               {#each game.seats as _, i (i)}
                 {@const met = row.bids[i] === row.won[i]}
                 <td>
-                  <b class="display">{running[ri][i]}</b>
+                  <b class="display">{score(running[ri][i])}</b>
                   <small class:met class:miss={!met}>{row.bids[i]}·{row.won[i]}</small>
                 </td>
               {/each}

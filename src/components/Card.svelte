@@ -6,12 +6,13 @@
 <script lang="ts">
   import { card, fromId } from '../lib/deck';
   import { i18n } from '../lib/i18n.svelte';
+  import { prefs } from '../lib/prefs.svelte';
   import { nextUid } from '../lib/table';
 
   let { id = null, back = false, glare = false }: { id?: string | null; back?: boolean; glare?: boolean } = $props();
 
   const uid = nextUid();
-  const svg = $derived(card(back ? { k: 'back' } : fromId(id), { lang: i18n.lang, uid }));
+  const svg = $derived(card(back ? { k: 'back' } : fromId(id), { lang: i18n.lang, uid, art: prefs.art }));
 </script>
 
 <div class="face">

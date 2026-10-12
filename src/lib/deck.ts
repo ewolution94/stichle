@@ -12,7 +12,11 @@
 // Card sizes are in a 250 × 350 viewBox (63 × 88 mm, a poker card). The corner index is sized for the
 // hand: a card 74 px wide shows a strip of about 26 px, which is 88 units here.
 
+import { FIGURES, LADDER, silhouette, type FigureId } from './figures.js';
+
 export type Suit = 'fire' | 'water' | 'earth' | 'air';
+/** How the cards look: the people of a medieval town (the default), or the classic letterpress deck. */
+export type Art = 'figures' | 'classic';
 export type Lang = 'de' | 'en';
 /** A card as the deck draws it: a number card, a Wizard (z) or a Jester (n), or the back. */
 export type Face = { k: 'num'; s: Suit; v: number } | { k: 'z'; s: Suit } | { k: 'n'; s: Suit } | { k: 'back' };
@@ -163,9 +167,55 @@ const frames = (st: string) => `<rect x="11" y="11" width="228" height="328" rx=
 const index = (txt: string | number, fill: string, mark: string) => `<text x="47" y="63" text-anchor="middle" ${BODONI} font-weight="800" font-size="50" style="font-variation-settings:'opsz' 14" fill="${fill}">${txt}</text>${mark}`;
 const label = (txt: string, fill: string) => `<text x="125" y="318" text-anchor="middle" ${BODONI} font-weight="700" font-size="13" letter-spacing="5" fill="${fill}">${txt.toUpperCase()}</text>`;
 
+/** The fire in a figure's hands is orange; the other elements glow in their own colour. */
+const GLOW: Record<Suit, string> = { fire: '#ff8a3c', water: '#8fd0ff', earth: '#7be0a2', air: '#ffe27a' };
+const LINEN = '#fbfaf6';
+
+/**
+ * A figure card (the user's pick, 2026-10-12): the number's person as a paper cut, a black silhouette
+ * against a disc of the suit's colour, standing on black ground; gold stays foil. The Wizards stand
+ * against gold, the Jesters against silver, each with its element's light. The corner indices sit on
+ * plates of the card's own paper, so the hand reads exactly as with the classic deck.
+ */
+function figureCard(c: Face & { s: Suit }, fig: FigureId, lang: Lang, u: string) {
+  const t = WORDS[lang];
+  const ink = INK[c.s];
+  const g = `url(#st-gold-${u})`;
+  const special = c.k !== 'num';
+  const ground = special ? PAPER : TINT[c.s];
+  const disc = c.k === 'z' ? g : c.k === 'n' ? `url(#st-silver-${u})` : ink;
+  const rule = c.k === 'z' ? g : c.k === 'n' ? BLACK : ink;
+  const mark =
+    c.k === 'num'
+      ? `<path d="${shapeD(SHAPE[c.s], 47, 88, 12)}" fill="${ink}"/>`
+      : c.k === 'z'
+        ? `<path d="${rose(47, 87, 12, 7, 3)}" fill="${g}"/>`
+        : `<path d="${shapeD('diamond', 47, 88, 11)}" fill="url(#st-silver-${u})" stroke="${BLACK}" stroke-width=".8"/>`;
+  const txt = c.k === 'num' ? c.v : c.k === 'z' ? t.z : t.n;
+  const art = silhouette(fig, {
+    gold: g,
+    glow: c.k === 'num' ? GLOW[c.s] : LUM[c.s],
+    paper: LINEN,
+    emblem: () => `<path d="${shapeD(SHAPE[c.s], 92, 182, 15)}" fill="${ink}"/>`,
+  });
+  return svg(foil(`st-gold-${u}`, GOLD, 9) + foil(`st-silver-${u}`, SILVER, 9), `<rect width="250" height="350" rx="14" fill="${ground}"/>
+    <circle cx="125" cy="150" r="88" fill="${disc}"/><circle cx="125" cy="150" r="96" fill="none" stroke="${rule}" stroke-width="1.2"/>
+    <path d="M30,294C70,284 100,288 125,290C150,292 185,284 220,294V300H30Z" fill="${BLACK}"/>
+    <g transform="translate(125 294) scale(.92) translate(-125 -292)">${art}</g>
+    <path d="M17,17H76V84Q76,100 60,100H17Z" fill="${ground}"/>
+    <path d="M233,333H174V266Q174,250 190,250H233Z" fill="${ground}"/>
+    ${frames(rule)}
+    ${corners(index(txt, rule === BLACK ? BLACK : rule, mark))}
+    ${label(FIGURES[fig].names[lang], BLACK)}`);
+}
+
 /** One card as SVG. `uid` keeps the card's own gradient ids apart from every other card on the page. */
-export function card(c: Face, { lang = 'de', uid = 0 }: { lang?: Lang; uid?: number | string } = {}) {
+export function card(c: Face, { lang = 'de', uid = 0, art = 'figures' }: { lang?: Lang; uid?: number | string; art?: Art } = {}) {
   const t = WORDS[lang], u = String(uid);
+  if (art === 'figures' && c.k !== 'back') {
+    const fig = c.k === 'num' ? LADDER[c.v] : c.k === 'z' ? 'wizard' : 'jester';
+    if (fig) return figureCard(c, fig, lang, u);
+  }
   if (c.k === 'num') {
     const ink = INK[c.s], tint = TINT[c.s], sh = SHAPE[c.s], size = c.v > 9 ? 84 : 96;
     return svg('', `<rect width="250" height="350" rx="14" fill="${tint}"/>${frames(ink)}

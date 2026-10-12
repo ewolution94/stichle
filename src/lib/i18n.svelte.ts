@@ -183,6 +183,9 @@ const STRINGS = {
     endedBy: 'Von {name} vorzeitig beendet',
     sounds: 'Töne',
     soundsHint: 'Töne auf diesem Gerät',
+    cardArt: 'Karten',
+    art_figures: 'Figuren',
+    art_classic: 'Klassisch',
 
     wait_create: 'Tisch wird gedeckt …',
     wait_join: 'Setze dich …',
@@ -356,6 +359,9 @@ const STRINGS = {
     endedBy: 'Ended early by {name}',
     sounds: 'Sounds',
     soundsHint: 'Sounds on this device',
+    cardArt: 'Cards',
+    art_figures: 'Figures',
+    art_classic: 'Classic',
 
     wait_create: 'Setting the table …',
     wait_join: 'Sitting down …',
@@ -410,6 +416,11 @@ export function errorText(code: string): string {
 
 /** A suit's name: "Feuer", "Fire". */
 export const suitName = (suit: 'fire' | 'water' | 'earth' | 'air') => t(`suit_${suit}`);
+
+/** A score: a real minus sign below zero, as on a score pad. `signed` adds the plus for a gain. */
+export function score(n: number, signed = false) {
+  return n < 0 ? `−${Math.abs(n)}` : signed && n > 0 ? `+${n}` : String(n);
+}
 
 /** Numbers as people write them here: 1.250 in German, 1,250 in English. */
 export function num(n: number) {

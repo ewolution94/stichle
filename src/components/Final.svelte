@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
   import { ApiError, type View } from '../lib/api';
-  import { errorText, names, t } from '../lib/i18n.svelte';
+  import { errorText, names, score, t } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
   import { actAt } from '../lib/waits';
   import Avatar from './Avatar.svelte';
@@ -92,7 +92,7 @@
           {#if p}<Avatar avatar={p.avatar} size={26} />{/if}
           <span class="who">{nameAt(s.seat)}</span>
           <span class="met">{t('metOf', { n: s.met, of: game.pad.length })}</span>
-          <b class="display">{s.total}</b>
+          <b class="display">{score(s.total)}</b>
         </li>
       {/each}
     </ol>

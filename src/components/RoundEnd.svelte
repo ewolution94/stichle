@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
   import type { View } from '../lib/api';
-  import { t } from '../lib/i18n.svelte';
+  import { score, t } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
   import { actAt } from '../lib/waits';
   import Avatar from './Avatar.svelte';
@@ -28,7 +28,6 @@
   });
   const left = $derived(game.readyBy ? Math.ceil(room.left(game.readyBy, now) / 1000) : 0);
 
-  const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
 </script>
 
 <div class="veil">
@@ -42,8 +41,8 @@
           {#if p}<Avatar avatar={p.avatar} size={28} />{/if}
           <span class="who">{seat === mine ? t('you') : (p?.name ?? '?')}</span>
           <span class="bw" class:met>{t('bidTook', { bid: row.bids[seat], won: row.won[seat] })}</span>
-          <span class="pts display" class:met class:miss={!met}>{sign(row.points[seat])}</span>
-          <span class="tot display">{game.totals[seat]}</span>
+          <span class="pts display" class:met class:miss={!met}>{score(row.points[seat], true)}</span>
+          <span class="tot display">{score(game.totals[seat])}</span>
         </li>
       {/each}
     </ol>

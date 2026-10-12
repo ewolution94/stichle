@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
   import type { Game, Player } from '../lib/api';
-  import { t } from '../lib/i18n.svelte';
+  import { score, t } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
   import Avatar from './Avatar.svelte';
   import Clock from './Clock.svelte';
@@ -48,7 +48,7 @@
           {/if}
         </span>
       {/if}
-      <span class="total">{game.totals[seat]}</span>
+      <span class="total">{score(game.totals[seat])}</span>
     </span>
   </div>
   {#if active && game.endsAt}<span class="clock"><Clock {room} endsAt={game.endsAt} tick={me} /></span>{/if}
