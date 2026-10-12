@@ -10,6 +10,8 @@
   import { earnedCount } from '../lib/profile.svelte';
   import { ACHIEVEMENTS } from '../lib/achievements';
   import { ui } from '../lib/ui.svelte';
+  import { onMount } from 'svelte';
+  import { firstVisit } from '../../vendor/ewo/elements/guide.js';
   import AvatarMaker from './AvatarMaker.svelte';
 
   /** `oncreate` resolves once the new room's lobby can show (its first view): the button waits for that. */
@@ -52,6 +54,12 @@
     event.preventDefault();
     if (CODE.test(cleanCode)) onjoin(cleanCode);
   }
+
+  // A device's first visit opens the how-to once (Folio's firstVisit: never again, and never when
+  // storage is blocked).
+  onMount(() => {
+    if (firstVisit('stichle:guide')) ui.guide = true;
+  });
 </script>
 
 <div class="home">
@@ -83,17 +91,15 @@
     </div>
   </form>
 
-  <button class="btn ghost collection" type="button" onclick={() => (ui.collection = true)}>
-    {t('yourCollection')} · {t('earnedOf', { n: earnedCount(), of: ACHIEVEMENTS.length })}
-  </button>
-
-  <details class="rules on-cloth">
-    <summary class="label">{t('rules')}</summary>
-    <p>{t('rulesDeck')}</p>
-    <p>{t('rulesRound')}</p>
-    <p>{t('rulesPlay')}</p>
-    <p>{t('rulesScore')}</p>
-  </details>
+  <div class="more">
+    <button class="btn ghost" type="button" onclick={() => (ui.guide = true)}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="12" height="16" rx="2" /><path d="M10 9h4M10 13h4" /></svg>
+      {t('guide')}
+    </button>
+    <button class="btn ghost" type="button" onclick={() => (ui.collection = true)}>
+      {t('yourCollection')} · {t('earnedOf', { n: earnedCount(), of: ACHIEVEMENTS.length })}
+    </button>
+  </div>
 </div>
 
 <style>
@@ -138,20 +144,20 @@
     letter-spacing: 0.3em;
     text-transform: uppercase;
   }
-  .collection {
-    align-self: flex-start;
+  .more {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
   }
-  .rules {
-    padding: 0 4px;
+  .more .btn {
+    flex: 1 1 auto;
   }
-  .rules summary {
-    cursor: pointer;
-    width: fit-content;
-  }
-  .rules p {
-    margin: 10px 0 0;
-    font-size: 14px;
-    line-height: 1.55;
-    color: var(--on-cloth);
+  .more svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
   }
 </style>

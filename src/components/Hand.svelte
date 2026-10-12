@@ -10,6 +10,8 @@
   import { flying } from '../lib/flight.svelte';
   import { i18n } from '../lib/i18n.svelte';
   import Card from './Card.svelte';
+  import { fanLayout, fanTransform, flightTransform } from '../../vendor/ewo/elements/card-fan.js';
+  import { handGestures, type Dragged } from '../../vendor/ewo/elements/card-hand.js';
 
   type Target = { x: number; y: number; rot: number; width: number };
 
@@ -43,7 +45,7 @@
   let air = $state<{ card: string; transform: string; landed: boolean } | null>(null);
   let shaking: string | null = $state(null);
   /** The card under a finger that's dragging it, and where it is. */
-  let drag = $state<{ card: string; x: number; y: number; r: number } | null>(null);
+  let drag = $state<Dragged | null>(null);
 
   const els = new Map<string, HTMLElement>();
   function register(node: HTMLElement, card: string) {
@@ -62,145 +64,37 @@
   /** Drawn in a steady order, so the card in the air keeps its element (and its transition). */
   const list = $derived(air && !cards.includes(air.card) ? [...cards, air.card] : cards);
 
+  // The fan from Folio's card kit (card-fan.js): few cards are held bigger, a full hand shrinks to
+  // fit (never below 62 px) and goes to two rows; a laptop's wider table lets them grow a little.
   const fan = $derived(cards.filter((c) => c !== air?.card));
-  // Few cards are held bigger; a full hand shrinks to fit, never below 62 px.
-  // On a laptop's wider table they may grow a little more.
-  const cap = $derived(width > 600 ? [124, 112, 100] : [104, 92, 84]);
-  const cw = $derived(Math.round(Math.max(62, Math.min(cards.length <= 3 ? cap[0] : cards.length <= 6 ? cap[1] : cap[2], width / (cards.length * 0.62 + 0.6)))));
-  const ch = $derived(Math.round(cw * 1.4));
-  const rows = $derived(fan.length > 1 && (width - 8 - cw) / (fan.length - 1) < 24 ? 2 : 1);
-  const height = $derived(rows === 2 ? Math.round(ch * 1.45) + 30 : ch + 30);
-
-  /** Each card's place in the fan: x, y (top left), turn, and which is on top. */
-  const places = $derived.by(() => {
-    const out = new Map<string, { x: number; y: number; r: number; z: number }>();
-    const split = rows === 2 ? Math.ceil(fan.length / 2) : fan.length;
-    const parts = rows === 2 ? [fan.slice(0, split), fan.slice(split)] : [fan];
-    parts.forEach((row, ri) => {
-      const m = row.length;
-      const step = m > 1 ? Math.min(cw * 0.62, (width - 8 - cw) / (m - 1)) : 0;
-      const x0 = (width - (cw + step * (m - 1))) / 2;
-      const front = ri === parts.length - 1;
-      const baseY = height - ch - 8 - (front ? 0 : Math.round(ch * 0.45));
-      row.forEach((card, i) => {
-        const t = m > 1 ? (i - (m - 1) / 2) / ((m - 1) / 2) : 0;
-        out.set(card, { x: x0 + i * step, y: baseY + t * t * 8, r: t * 7, z: (front ? 100 : 0) + i + 1 });
-      });
-    });
-    return out;
-  });
+  const layout = $derived(fanLayout(fan, { width, count: cards.length, sizes: width > 600 ? [124, 112, 100] : [104, 92, 84] }));
+  const cw = $derived(layout.cw);
+  const ch = $derived(layout.ch);
+  const height = $derived(layout.height);
+  const places = $derived(layout.places);
 
   function transformOf(card: string) {
-    if (drag?.card === card) return `translate(${drag.x}px, ${drag.y}px) rotate(${drag.r}deg) scale(1.12)`;
-    const p = places.get(card);
-    if (!p) return '';
-    const up = card === sel ? 24 : 0;
-    return `translate(${p.x.toFixed(1)}px, ${(p.y - up).toFixed(1)}px) rotate(${p.r.toFixed(2)}deg) scale(${card === sel ? 1.05 : 1})`;
+    if (drag?.key === card) return `translate(${drag.x}px, ${drag.y}px) rotate(${drag.r}deg) scale(1.12)`;
+    return fanTransform(layout, card, { lifted: card === sel });
   }
 
-  // ---- finding the card under a finger -------------------------------------------------------
-
-  function local(e: PointerEvent) {
-    const r = box!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  }
-
-  function at(x: number, y: number): string | null {
-    let best: string | null = null;
-    let bestZ = -1;
-    for (const [card, p] of places) {
-      const top = p.y - (card === sel ? 24 : 0);
-      if (x >= p.x && x <= p.x + cw && y >= top - 6 && y <= p.y + ch && p.z > bestZ) {
-        best = card;
-        bestZ = p.z;
-      }
-    }
-    if (best) return best;
-    // Below or beside the fan: the nearest card along the row the finger is level with.
-    let near: string | null = null;
-    let dist = Infinity;
-    for (const [card, p] of places) {
-      const d = Math.abs(x - (p.x + cw / 2)) + Math.abs(y - (p.y + ch / 2)) * 0.3;
-      if (d < dist) {
-        dist = d;
-        near = card;
-      }
-    }
-    return near;
-  }
-
-  // ---- the gesture ---------------------------------------------------------------------------
-
-  let down: { x: number; y: number; card: string | null; was: string | null; moved: boolean; refused: boolean } | null = null;
-  let flick = { x: 0, y: 0, t: 0, vx: 0, vy: 0, ox: 0, oy: 0 };
-  let press = 0;
-
-  function pointerdown(e: PointerEvent) {
-    if (!box || air || !fan.length || e.button > 0) return;
-    box.setPointerCapture(e.pointerId);
-    const p = local(e);
-    const card = at(p.x, p.y);
-    down = { x: p.x, y: p.y, card, was: sel, moved: false, refused: false };
-    if (card) sel = card;
-    clearTimeout(press);
-    press = window.setTimeout(() => {
-      if (down && !down.moved && !drag && down.card) {
-        const card = down.card;
-        down = null;
-        oninspect(card);
-      }
-    }, 480);
-  }
-
-  function pointermove(e: PointerEvent) {
-    if (!down) return;
-    const p = local(e);
-    const now = performance.now();
-    if (drag) {
-      const dt = Math.max(1, now - flick.t);
-      flick.vx = flick.vx * 0.6 + ((p.x - flick.x) / dt) * 0.4;
-      flick.vy = flick.vy * 0.6 + ((p.y - flick.y) / dt) * 0.4;
-      flick = { ...flick, x: p.x, y: p.y, t: now };
-      drag = { card: drag.card, x: p.x - flick.ox, y: p.y - flick.oy, r: Math.max(-18, Math.min(18, flick.vx * 22)) };
-      return;
-    }
-    if (Math.hypot(p.x - down.x, p.y - down.y) > 7) {
-      down.moved = true;
-      clearTimeout(press);
-    }
-    if (sel && down.y - p.y > 22) {
-      if (canPlay && legal.includes(sel)) {
-        const pl = places.get(sel)!;
-        flick = { x: p.x, y: p.y, t: now, vx: 0, vy: 0, ox: p.x - pl.x, oy: p.y - (pl.y - 24) };
-        drag = { card: sel, x: pl.x, y: pl.y - 24, r: pl.r };
-      } else if (canPlay && !down.refused) {
-        down.refused = true;
-        refuse(sel);
-      }
-      return;
-    }
-    const card = at(p.x, p.y);
-    if (card && card !== sel) sel = card;
-  }
-
-  function pointerup() {
-    clearTimeout(press);
-    if (drag) {
-      const card = drag.card;
-      const gone = drag.y + ch / 2 < 0 || flick.vy < -0.5;
-      if (gone) void send(card);
-      drag = null;
-    } else if (down && down.card && !down.moved && down.card === down.was) {
-      tryPlay(down.card);
-    }
-    down = null;
-  }
-
-  function pointercancel() {
-    clearTimeout(press);
-    drag = null;
-    down = null;
-  }
+  // The gestures from the kit (card-hand.js): scrub, drag or flick up, tap twice, refuse, hold to look.
+  $effect(() => {
+    if (!box) return;
+    const gestures = handGestures(box, {
+      fan: () => layout,
+      lifted: () => sel,
+      lift: (card) => (sel = card),
+      enabled: () => !air && fan.length > 0,
+      canPlay: () => canPlay,
+      playable: (card) => legal.includes(card),
+      play: (card) => void send(card),
+      refuse,
+      inspect: (card) => oninspect(card),
+      drag: (d) => (drag = d),
+    });
+    return () => gestures.destroy();
+  });
 
   function tryPlay(card: string) {
     if (!canPlay) return;
@@ -219,9 +113,7 @@
     const el = els.get(card);
     const to = target(card);
     if (box && el && to) {
-      const r = box.getBoundingClientRect();
-      const scale = to.width / cw;
-      air = { card, landed: false, transform: `translate(${(to.x - r.left - cw / 2).toFixed(1)}px, ${(to.y - r.top - ch / 2).toFixed(1)}px) rotate(${to.rot}deg) scale(${scale.toFixed(3)})` };
+      air = { card, landed: false, transform: flightTransform(layout, box.getBoundingClientRect(), to) };
       flying(card, FLY_MS);
       setTimeout(() => {
         if (air?.card === card) air = { ...air, landed: true };
@@ -239,7 +131,7 @@
   }
 
   function key(e: MouseEvent, card: string) {
-    // Taps arrive as pointer events above; this is Enter or Space on a focused card.
+    // Taps arrive as pointer events (the kit's gestures); this is Enter or Space on a focused card.
     if (e.detail !== 0) return;
     sel = card;
     tryPlay(card);
@@ -254,11 +146,6 @@
   role="group"
   data-press="own"
   aria-label={i18n.lang === 'de' ? 'Deine Karten' : 'Your cards'}
-  onpointerdown={pointerdown}
-  onpointermove={pointermove}
-  onpointerup={pointerup}
-  onpointercancel={pointercancel}
-  oncontextmenu={(e) => e.preventDefault()}
 >
   {#each list as card (card)}
     {@const p = places.get(card)}
@@ -267,12 +154,12 @@
       class="slot"
       class:lifted={card === sel}
       class:dim={canPlay && !legal.includes(card)}
-      class:dragging={drag?.card === card}
+      class:dragging={drag?.key === card}
       class:air={air?.card === card}
       class:shake={shaking === card}
       style:width="{cw}px"
       style:transform={air && air.card === card ? air.transform : transformOf(card)}
-      style:z-index={air?.card === card || drag?.card === card ? 300 : (p?.z ?? 0)}
+      style:z-index={air?.card === card || drag?.key === card ? 300 : (p?.z ?? 0)}
       aria-label={nameOf(fromId(card), i18n.lang)}
       aria-disabled={!canPlay || !legal.includes(card)}
       onclick={(e) => key(e, card)}

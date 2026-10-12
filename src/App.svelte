@@ -11,6 +11,7 @@
   import Footer from './components/Footer.svelte';
   import Screen from './components/Screen.svelte';
   import Collection from './components/Collection.svelte';
+  import Guide from './components/Guide.svelte';
   import Earned from './components/Earned.svelte';
 
   // The whole app is one page. "/" is the start; "/KXPT" is a table, and the link people share;
@@ -163,6 +164,7 @@
 {/if}
 
 <Collection />
+<Guide />
 <Earned />
 
 <style>

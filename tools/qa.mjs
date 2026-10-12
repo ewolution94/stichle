@@ -26,6 +26,8 @@ async function person(name) {
   await context.addInitScript(() => {
     try {
       localStorage.setItem('ewo:lang', 'de');
+      // The how-to opens on a first visit (Guide.svelte); these players have read it.
+      localStorage.setItem('stichle:guide', '1');
     } catch {}
   });
   const page = await context.newPage();

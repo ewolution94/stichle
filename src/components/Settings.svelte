@@ -122,6 +122,11 @@
       <span class="name"><b>{t('yourCollection')}</b><small>{t('earnedOf', { n: earnedCount(), of: ACHIEVEMENTS.length })}</small></span>
       <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
     </button>
+    <button class="collection guide" type="button" onclick={() => (onclose(), (ui.guide = true))}>
+      <svg class="book" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="12" height="16" rx="2" /><path d="M10 9h4M10 13h4" /></svg>
+      <span class="name"><b>{t('guide')}</b><small>{t('guideOpen')}</small></span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+    </button>
     <section>
       <h3 class="label">{t('general')}</h3>
       <div class="row">
@@ -182,6 +187,22 @@
     color: var(--ink);
     text-align: left;
     -webkit-tap-highlight-color: transparent;
+  }
+  .collection.guide {
+    margin-top: -10px;
+  }
+  .book {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    padding: 6px;
+    border-radius: 50%;
+    background: var(--paper);
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    box-shadow: 0 0 0 1px var(--line);
   }
   .collection .seals {
     display: flex;
