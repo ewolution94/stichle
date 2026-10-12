@@ -61,6 +61,23 @@
 
   const bidsSoFar = $derived(game.bids.reduce<number>((sum, b) => sum + (b ?? 0), 0));
 
+  // Your bid: one big number, − and + beside it, then "Ansagen". It starts at 0 each round.
+  let pick = $state(0);
+  let lastRound = 0;
+  $effect(() => {
+    if (game.round !== lastRound) {
+      lastRound = game.round;
+      pick = 0;
+    }
+  });
+  let bump = $state<'up' | 'down'>('up');
+  function nudge(by: number) {
+    const next = Math.max(0, Math.min(game.round, pick + by));
+    if (next === pick) return;
+    bump = by > 0 ? 'up' : 'down';
+    pick = next;
+  }
+
   let trickW = $state(320);
   let trickH = $state(260);
   let trickEl: HTMLDivElement | undefined = $state();
@@ -199,16 +216,22 @@
         </div>
       </div>
     {:else if myTurn && game.stage === 'bid'}
-      <div class="panel sheet">
-        <div class="bidhead">
-          <span class="label">{t('yourBid')}</span>
-          <span class="sofar">{t('bidsSoFar', { sum: bidsSoFar, n: game.round })}</span>
+      <div class="panel sheet bid">
+        <span class="label">{t('yourBid')}</span>
+        <div class="dial">
+          <button class="step" type="button" aria-label={t('bidLess')} disabled={pick <= 0} onclick={() => nudge(-1)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
+          </button>
+          <div class="value" role="status" aria-live="polite">
+            {#key pick}<span class="big display {bump}">{pick}</span>{/key}
+            <small>{pick === 1 ? t('trickOne') : t('trickMany')}</small>
+          </div>
+          <button class="step" type="button" aria-label={t('bidMore')} disabled={pick >= game.round} onclick={() => nudge(1)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12" /></svg>
+          </button>
         </div>
-        <div class="numbers" class:many={game.round > 7}>
-          {#each { length: game.round + 1 } as _, k (k)}
-            <button class="num display" type="button" onclick={(e) => act('bid', { n: k }, e).catch(() => {})}>{k}</button>
-          {/each}
-        </div>
+        <span class="sofar">{t('bidsSoFar', { sum: bidsSoFar, n: game.round })}</span>
+        <button class="btn primary block" type="button" onclick={(e) => act('bid', { n: pick }, e).catch(() => {})}>{t('bidThis', { n: pick })}</button>
       </div>
     {/if}
 
@@ -454,43 +477,94 @@
       opacity: 0;
     }
   }
-  .bidhead {
+  /* The bid: the number pressed big into the paper, round − and + either side. */
+  .bid {
+    align-items: center;
+    text-align: center;
+  }
+  .dial {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr) 56px;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 320px;
+  }
+  .step {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+    background: #ffffff;
+    color: var(--ink);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform var(--ewo-dur-1) var(--ewo-ease), background-color var(--ewo-dur-1) var(--ewo-ease);
+  }
+  .step svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+  }
+  .step:disabled {
+    opacity: 0.3;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .step:hover:not(:disabled) {
+      background: var(--paper-2);
+    }
+    .step:active:not(:disabled) {
+      transform: scale(0.92);
+    }
+  }
+  .value {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    overflow: hidden;
+  }
+  .big {
+    display: block;
+    font-size: 72px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    text-shadow: 0 1px 0 rgb(255 255 255 / 0.8), 0 -1px 0 rgb(0 0 0 / 0.14);
+    animation: pop 0.34s cubic-bezier(0.25, 1.6, 0.4, 1) both;
+  }
+  .big.down {
+    animation-name: drop;
+  }
+  /* A new number comes in from the side it was counted towards, with a little overshoot. */
+  @keyframes pop {
+    from {
+      translate: 0 18px;
+      scale: 0.7;
+      opacity: 0;
+    }
+  }
+  @keyframes drop {
+    from {
+      translate: 0 -18px;
+      scale: 0.7;
+      opacity: 0;
+    }
+  }
+  .value small {
+    font: 600 12px/1 var(--ewo-sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mute);
   }
   .sofar {
     font-size: 13px;
     color: var(--mute);
-  }
-  .numbers {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
-    gap: 6px;
-  }
-  .numbers.many {
-    grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
-    gap: 5px;
-  }
-  .num {
-    min-height: 46px;
-    border: 1.5px solid var(--ink);
-    border-radius: 50%;
-    aspect-ratio: 1;
-    background: #ffffff;
-    color: var(--ink);
-    font-size: 20px;
-  }
-  .numbers.many .num {
-    min-height: 38px;
-    font-size: 16px;
-  }
-  @media (hover: hover) {
-    .num:hover {
-      background: var(--cloth);
-      color: var(--paper);
-    }
   }
   .suits {
     display: grid;

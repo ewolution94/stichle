@@ -250,6 +250,7 @@
   bind:clientWidth={width}
   style:height="{height}px"
   role="group"
+  data-press="own"
   aria-label={i18n.lang === 'de' ? 'Deine Karten' : 'Your cards'}
   onpointerdown={pointerdown}
   onpointermove={pointermove}
