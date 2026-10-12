@@ -123,8 +123,8 @@
     </div>
   {:else}
     <div class="play">
-      <div class="felt">
-        <div class="oval"></div>
+      <div class="room">
+        <div class="oval felt"></div>
         <div class="pile">
           <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} mine={-1} n={game.seats.length} cap={170} />
         </div>
@@ -304,7 +304,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(300px, 26vw);
     gap: 2vw;
   }
-  .felt {
+  .room {
     position: relative;
     min-height: 0;
   }
@@ -313,8 +313,6 @@
     position: absolute;
     inset: 8% 6%;
     border-radius: 50%;
-    background: radial-gradient(closest-side, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.02));
-    box-shadow: inset 0 0 0 1.5px rgb(201 162 74 / 0.45), 0 30px 60px -30px rgb(0 0 0 / 0.6);
   }
   .pile {
     position: absolute;

@@ -48,7 +48,7 @@
     gap: 16px;
     height: var(--bar-h);
     padding: 0 var(--gutter);
-    background: color-mix(in oklab, var(--cloth) 94%, transparent);
+    background: color-mix(in oklab, var(--wood-2) 92%, transparent);
     border-bottom: 1px solid transparent;
     color: var(--on-cloth);
     --ewo-fg: var(--on-cloth);

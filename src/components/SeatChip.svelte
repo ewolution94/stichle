@@ -64,7 +64,7 @@
     min-width: 0;
     padding: 5px 9px 5px 5px;
     border-radius: 999px;
-    background: rgb(10 16 46 / 0.55);
+    background: rgb(0 0 0 / 0.34);
     box-shadow: inset 0 0 0 1px rgb(236 230 214 / 0.14);
     color: var(--on-cloth);
     transition: box-shadow 0.25s, background-color 0.25s;
@@ -77,7 +77,7 @@
     text-align: center;
   }
   .seat.active {
-    background: rgb(10 16 46 / 0.75);
+    background: rgb(0 0 0 / 0.5);
     box-shadow: inset 0 0 0 1.5px var(--gold), 0 0 16px -2px rgb(243 220 148 / 0.45);
   }
   .seat.gone {

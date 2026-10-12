@@ -12,12 +12,15 @@
   color-scheme: light;
   --ewo-light: 1;
 
-  /* The table and the paper. */
+  /* The room: a dark oak table. On it, the cloth the game is played on, and the paper. */
+  --wood: #2a1c13;
+  --wood-2: #1b120c;
+  --wood-hi: #4a3121;
   --cloth: #1d2b62;
   --cloth-2: #16224f;
   --cloth-3: #26367a;
   --on-cloth: #ece6d6;
-  --on-cloth-2: #b9bfd9;
+  --on-cloth-2: #cdbfa5;
   --paper: #f8f6f1;
   --paper-2: #efeadf;
   --ink: #1c1a22;
@@ -65,13 +68,86 @@
 }
 
 html {
-  background-color: var(--cloth);
-  /* The cloth: a soft light in the middle, an engraved wave so faint it's felt more than seen. */
+  background-color: var(--wood);
+  /* The table: oak boards with their grain (one tile of noise, stitched so it repeats without a
+     seam), a warm light falling from above, the corners in shadow. */
   background-image:
-    radial-gradient(120% 80% at 50% 30%, rgb(255 255 255 / 0.07), transparent 70%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='16'%3E%3Cpath d='M0 8 Q10 2 20 8 T40 8 T60 8 T80 8' fill='none' stroke='%23ffffff' stroke-opacity='0.045' stroke-width='1'/%3E%3C/svg%3E");
-  background-attachment: fixed, scroll;
+    radial-gradient(130% 90% at 50% 18%, rgb(255 190 110 / 0.1), transparent 60%),
+    radial-gradient(150% 120% at 50% 40%, transparent 45%, rgb(0 0 0 / 0.5)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0045 0.3' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.19 0 0 0 0 0.11 0 0 0 0.85 -0.25'/%3E%3C/filter%3E%3Crect width='800' height='800' fill='%232a1c13'/%3E%3Crect width='800' height='800' filter='url(%23g)'/%3E%3Cpath d='M0 199.5H800M0 479.5H800M0 679.5H800' stroke='%23120b07' stroke-width='3'/%3E%3Cpath d='M0 202H800M0 482H800M0 682H800' stroke='%235a3c28' stroke-opacity='0.5' stroke-width='1'/%3E%3C/svg%3E");
+  background-attachment: fixed, fixed, scroll;
   overflow-x: clip;
+}
+
+/* The cloth the game is played on (the table's middle, the big screen's oval): woven, with a faint
+   damask of the four suit signs, a gold-stitched border, and a candle's light that breathes. Its
+   colour is the player's own choice (data-cloth, R2). Layers stay static; only the glow animates,
+   and only its opacity. */
+.felt {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--cloth);
+  background-image:
+    radial-gradient(110% 85% at 50% 42%, rgb(255 255 255 / 0.07), rgb(0 0 0 / 0.28) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='none' stroke='%23e9c66a' stroke-opacity='0.13'%3E%3Ccircle cx='100' cy='100' r='96'/%3E%3Ccircle cx='100' cy='100' r='90' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='74'/%3E%3C/g%3E%3Cpath d='M182.0 97.0l3 3-3 3-3-3zM179.2 118.2l3 3-3 3-3-3zM171.0 138.0l3 3-3 3-3-3zM158.0 155.0l3 3-3 3-3-3zM141.0 168.0l3 3-3 3-3-3zM121.2 176.2l3 3-3 3-3-3zM100.0 179.0l3 3-3 3-3-3zM78.8 176.2l3 3-3 3-3-3zM59.0 168.0l3 3-3 3-3-3zM42.0 155.0l3 3-3 3-3-3zM29.0 138.0l3 3-3 3-3-3zM20.8 118.2l3 3-3 3-3-3zM18.0 97.0l3 3-3 3-3-3zM20.8 75.8l3 3-3 3-3-3zM29.0 56.0l3 3-3 3-3-3zM42.0 39.0l3 3-3 3-3-3zM59.0 26.0l3 3-3 3-3-3zM78.8 17.8l3 3-3 3-3-3zM100.0 15.0l3 3-3 3-3-3zM121.2 17.8l3 3-3 3-3-3zM141.0 26.0l3 3-3 3-3-3zM158.0 39.0l3 3-3 3-3-3zM171.0 56.0l3 3-3 3-3-3zM179.2 75.8l3 3-3 3-3-3z' fill='%23e9c66a' fill-opacity='0.12'/%3E%3Cpath d='M100.0 44.0L104.6 88.9L121.2 78.8L111.1 95.4L156.0 100.0L111.1 104.6L121.2 121.2L104.6 111.1L100.0 156.0L95.4 111.1L78.8 121.2L88.9 104.6L44.0 100.0L88.9 95.4L78.8 78.8L95.4 88.9Z' fill='%23e9c66a' fill-opacity='0.08'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='%23e9c66a' fill-opacity='0.085'%3E%3Cpath d='M16 10.5L21 19.5H11Z'/%3E%3Ccircle cx='48' cy='16' r='4.6'/%3E%3Cpath d='M12 44H20V52H12Z'/%3E%3Cpath d='M48 42L52.2 48L48 54L43.8 48Z'/%3E%3C/g%3E%3Cpath d='M0 32L32 0L64 32L32 64Z' fill='none' stroke='%23e9c66a' stroke-opacity='0.05'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 0.028) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-45deg, rgb(0 0 0 / 0.06) 0 1px, transparent 1px 3px);
+  /* The medallion sits in the middle, under the pile; the damask and the weave fill the rest. */
+  background-position: center, center, 0 0, 0 0, 0 0;
+  background-size: auto, min(78%, 300px) auto, 64px 64px, auto, auto;
+  background-repeat: no-repeat, no-repeat, repeat, repeat, repeat;
+  border-radius: 28px;
+  box-shadow:
+    0 0 0 3px rgb(20 13 8 / 0.9),
+    0 0 0 4px rgb(201 162 74 / 0.35),
+    0 22px 44px -18px rgb(0 0 0 / 0.85),
+    inset 0 0 50px rgb(0 0 0 / 0.38);
+}
+/* The border: a gold line, and stitches inside it. */
+.felt::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  z-index: -1;
+  border: 1.5px solid rgb(201 162 74 / 0.55);
+  border-radius: inherit;
+  outline: 1.5px dashed rgb(233 198 106 / 0.32);
+  outline-offset: -6px;
+  pointer-events: none;
+}
+.felt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(75% 60% at 22% 6%, rgb(255 184 92 / 0.22), transparent 70%);
+  animation: candle 5.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes candle {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  22% {
+    opacity: 0.7;
+  }
+  37% {
+    opacity: 1;
+  }
+  58% {
+    opacity: 0.78;
+  }
+  76% {
+    opacity: 0.95;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .felt::after {
+    animation: none;
+  }
 }
 
 body {

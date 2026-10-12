@@ -197,6 +197,7 @@
     </div>
   {/if}
 
+  <div class="felt cloth">
   <div class="seats" style:--count={others.length}>
     {#each others as seat, i (seat)}
       <div class="far" style:--lift="{Math.round((1 - Math.sin(((i + 1) / (others.length + 1)) * Math.PI)) * 14)}px">
@@ -211,6 +212,7 @@
   <div class="middle" bind:this={trickEl}>
     <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} {mine} {n} bind:width={trickW} bind:height={trickH} />
     <Floats {room} {view} />
+  </div>
   </div>
 
   <div class="dock">
@@ -420,13 +422,21 @@
     font-size: 21px;
   }
 
-  /* The far side of the table, clear of the bar: the middle seat furthest away, the outer ones a
-     little nearer, like chairs round a table. */
+  /* The cloth on the table: from under the bar to your seat, which sits on its near edge. */
+  .cloth {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 14px 0 -30px;
+    padding: 18px 12px 34px;
+  }
+  /* The far side of the table: the middle seat furthest away, the outer ones a little nearer, like
+     chairs round a table. */
   .seats {
     display: grid;
     grid-template-columns: repeat(var(--count), minmax(0, 1fr));
     gap: 6px;
-    margin-top: 22px;
     padding-bottom: 14px;
   }
   .far {
