@@ -66,6 +66,13 @@
   --ewo-focus: 3px solid var(--gold);
 }
 
+/* Folio's rule for Stichle sets the accent on <body> to the card table's green; here it follows
+   the table this device chose (the switch, the segmented control). */
+[data-ewo-project='stichle'] {
+  --ewo-accent: var(--cloth);
+  --ewo-accent-2: var(--cloth);
+}
+
 html,
 .board {
   /* Spieltisch, everyone's room: dark panelling, warm light falling from above. */
