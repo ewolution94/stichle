@@ -6,12 +6,12 @@
 //   POST /api/rooms/:code/join {name, avatar, token?}   a seat (the same one again with your token)
 //   GET  /api/rooms/:code/events?p=<id>   the room for one page (SSE; below)
 //   POST /api/rooms/:code/<action>        settings, sit, move, shuffle, start, trump, bid, play, next,
-//                                         stop, rematch, bot, react, avatar, kick, leave; with your
+//                                         stop, rematch, bot, avatar, kick, leave; with your
 //                                         token in `x-stichle-token`
 //   GET  /api/rooms/:code/events          without `p`: the same stream for the big screen
 //
-// The stream's events: `view` (the room as this page may see it, on every change) and `react` (an
-// emoji floating up).
+// The stream's one event: `view` (the room as this page may see it, on every change). No emoji
+// reactions: the user took them out of Stichle (2026-10-13).
 //
 // Why SSE and not WebSockets: everything the server pushes fits SSE, Node has no WebSocket server
 // built in, and SSE already runs through Cloudflare's tunnel for Pulse, Schätzle, Kritzle and CDNMS.
@@ -20,7 +20,7 @@
 // Errors are `{ "error": "<code>" }` with a status; the codes are GameError's and the client words
 // them.
 
-import { GameError, BIDDINGS, CLOCKS, DEFAULT_SETTINGS, LIMITS, MOVE_SECONDS, REACTIONS } from './game.mjs';
+import { GameError, BIDDINGS, CLOCKS, DEFAULT_SETTINGS, LIMITS, MOVE_SECONDS } from './game.mjs';
 
 const MAX_BODY = 8 * 1024;
 /** Cloudflare drops a stream that's quiet for 100 s. */
@@ -112,7 +112,6 @@ export function createApi({ games }) {
           moveSeconds: MOVE_SECONDS,
           biddings: BIDDINGS,
           seats: { min: LIMITS.minSeats, max: LIMITS.seats },
-          reactions: REACTIONS,
           defaults: DEFAULT_SETTINGS,
         });
         return true;

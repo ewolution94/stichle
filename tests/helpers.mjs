@@ -45,13 +45,11 @@ export function setup(seed = 7) {
   return { clock, games };
 }
 
-/** A page on the room's stream, keeping the latest view and the reactions it was sent. */
+/** A page on the room's stream, keeping the latest view. */
 export function watch(games, code, playerId = null) {
-  const page = { view: null, reacts: [] };
+  const page = { view: null };
   page.close = games.subscribe(code, playerId, (event, data) => {
-    const body = JSON.parse(data);
-    if (event === 'view') page.view = body;
-    else if (event === 'react') page.reacts.push(body);
+    if (event === 'view') page.view = JSON.parse(data);
   });
   return page;
 }

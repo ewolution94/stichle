@@ -1,12 +1,14 @@
 <!--
   One seat at the table: the player's seal and name, what they bid and how many tricks they have
   (pips that fill, gold when the bid is met, red once it's overshot), their score, and whose move
-  it is (a gold ring, with the clock when there is one). The dealer carries a small deck.
+  it is (a gold ring, with the clock when there is one). The dealer carries a small deck; whoever
+  plays the round's first card carries a gold tag until it's played.
 -->
 <script lang="ts">
   import type { Game, Player } from '../lib/api';
   import { score, t } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
+  import { opener } from '../lib/table';
   import Avatar from './Avatar.svelte';
   import Clock from './Clock.svelte';
 
@@ -23,12 +25,13 @@
   const won = $derived(game.won[seat] ?? 0);
   const active = $derived(game.phase === 'round' && game.waiting.includes(seat));
   const dealer = $derived(game.dealer === seat);
+  const opens = $derived(opener(game) === seat);
   const over = $derived(bidValue !== null && won > bidValue);
   const met = $derived(bidValue !== null && won === bidValue);
   const pips = $derived(Math.max(bidValue ?? 0, won));
 </script>
 
-<div class="seat" class:active class:me class:compact class:gone={game.gone[seat] || (player && !player.online)}>
+<div class="seat" class:active class:me class:compact class:opens class:gone={game.gone[seat] || (player && !player.online)}>
   <div class="face">
     {#if player}<Avatar avatar={player.avatar} size={compact ? 30 : 36} />{/if}
     {#if dealer}<span class="dealer" title={t('dealer')} aria-label={t('dealer')}></span>{/if}
@@ -52,6 +55,7 @@
       <span class="total">{score(game.totals[seat])}</span>
     </span>
   </div>
+  {#if opens}<span class="opens-tag"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2.5 9 6 3 9.5Z" /></svg>{t('opensTag')}</span>{/if}
   {#if active && game.endsAt}<span class="clock"><Clock {room} endsAt={game.endsAt} tick={me} /></span>{/if}
 </div>
 
@@ -223,5 +227,44 @@
     bottom: -10px;
     right: 50%;
     translate: 50% 0;
+  }
+  /* The clock makes room for the tag. */
+  .compact.opens .clock {
+    top: -10px;
+    bottom: auto;
+    right: -6px;
+    translate: none;
+  }
+  /* Whoever leads the round's first card: a gold tag hanging from the place card's lower edge. */
+  .opens-tag {
+    position: absolute;
+    z-index: 2;
+    bottom: -9px;
+    left: 50%;
+    translate: -50% 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px 3px 6px;
+    border-radius: 999px;
+    background: linear-gradient(var(--gold-hi), var(--gold));
+    color: var(--ink);
+    font: 700 9.5px/1 var(--ewo-sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    box-shadow: 0 0 0 1px var(--gold-lo), 0 4px 8px -4px rgb(0 0 0 / 0.7);
+    animation: tag-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) backwards;
+  }
+  .opens-tag svg {
+    width: 8px;
+    height: 8px;
+    fill: currentColor;
+  }
+  @keyframes tag-in {
+    from {
+      opacity: 0;
+      scale: 0.6;
+    }
   }
 </style>

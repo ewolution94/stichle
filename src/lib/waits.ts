@@ -1,8 +1,8 @@
 // Waiting for the server, at the control that asked (Folio's track(), development/plans/waiting-states.md;
 // Kritzle's pilot): the tapped button stays pressed and locked until the answer, shows the little fan
 // after 150 ms, says what it's doing after 1.2 s, "Dauert länger …" after 6 s, and offers "Nochmal"
-// at 12 s. A played card flies at once (Hand.svelte), and reactions and the lobby's settings stay
-// instant: they never wait here.
+// at 12 s. A played card flies at once (Hand.svelte), and the lobby's settings stay instant: they
+// never wait here.
 
 import { track } from '../../vendor/ewo/elements/waiting.js';
 import { ApiError } from './api';

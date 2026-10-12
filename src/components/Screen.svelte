@@ -13,7 +13,6 @@
   import { angleOf } from '../lib/table';
   import Avatar from './Avatar.svelte';
   import Card from './Card.svelte';
-  import Floats from './Floats.svelte';
   import Logo from './Logo.svelte';
   import Qr from './Qr.svelte';
   import ScoreTable from './ScoreTable.svelte';
@@ -41,7 +40,7 @@
     if (!game || game.phase !== 'round') return '';
     if (game.stage === 'trump') return t('pickTrumpOther', { name: playerAt(game.dealer)?.name ?? '' });
     if (game.stage === 'bid') return game.bidding === 'secret' ? t('bidSecretWait', { n: game.waiting.length }) : t('bidOther', { name: playerAt(game.turn)?.name ?? '' });
-    if (game.stage === 'play') return t('playOther', { name: playerAt(game.turn)?.name ?? '' });
+    if (game.stage === 'play') return t(game.trick.cards.length ? 'playOther' : 'playLeadOther', { name: playerAt(game.turn)?.name ?? '' });
     return '';
   });
 
@@ -134,7 +133,6 @@
             <SeatChip {room} {game} {seat} player={playerAt(seat)} compact />
           </div>
         {/each}
-        <Floats {room} {view} />
       </div>
       <aside class="sheet pad">
         <h2 class="display">{game.phase === 'scored' ? t('roundOf', { n: game.round }) : t('scorePad')}</h2>

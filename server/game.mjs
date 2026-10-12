@@ -38,7 +38,6 @@ export const CODE = /^[BCDFGHJKLMNPQRSTVWXZ]{4}$/;
 /** A clock per move: off, relaxed (60 s) or quick (25 s). When it runs out, the bot moves for you. */
 export const CLOCKS = Object.freeze(['off', 'relaxed', 'quick']);
 export const MOVE_SECONDS = Object.freeze({ relaxed: 60, quick: 25 });
-export const REACTIONS = Object.freeze(['👍', '😂', '😮', '🤔', '🔥', '🙈']);
 
 /** clock: a clock per move · bidding: open (the original), uneven ("mustn't add up"), secret (R2). */
 export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open' });
@@ -66,7 +65,6 @@ const EMPTY_TTL = 30 * 60_000;
 /** A game with no human online for this long ends, so bots never play on for no one. */
 const UNWATCHED_MS = 2 * 60_000;
 const IDLE_TTL = 4 * 60 * 60_000;
-const REACT_GAP = 250;
 /** Bots think for a moment: between these many milliseconds. */
 const BOT_THINK = [900, 1900];
 
@@ -179,7 +177,6 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       online: 0,
       offlineSince: clock.now(),
       left: false,
-      reacted: 0,
     };
     r.players.set(p.id, p);
     // A free chair in the lobby is yours; past six, or once the cards are out, you watch.
@@ -436,7 +433,6 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
         bot: p.bot,
       })),
       game: r.game ? gameView(r, r.game, me) : null,
-      reactions: REACTIONS,
       now: clock.now(),
     };
   }
@@ -594,8 +590,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     },
 
     /**
-     * Streams the room to one page: its view now and after every change ('view'), and reactions
-     * ('react'). Returns the unsubscribe function.
+     * Streams the room to one page: its view now and after every change ('view'). Returns the
+     * unsubscribe function.
      * @param {(event: string, data: string) => void} send
      */
     subscribe(code, playerId, send) {
@@ -763,16 +759,6 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
               touch(r);
             }
           }
-          return;
-        }
-        case 'react': {
-          const e = body?.e;
-          if (!Number.isInteger(e) || e < 0 || e >= REACTIONS.length) throw new GameError('react');
-          const now = clock.now();
-          if (now - p.reacted < REACT_GAP) return;
-          p.reacted = now;
-          const data = JSON.stringify({ player: p.id, e });
-          for (const s of r.subscribers) s.send('react', data);
           return;
         }
         case 'avatar': {

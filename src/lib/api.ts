@@ -110,7 +110,6 @@ export interface View {
   order: string[];
   players: Player[];
   game: Game | null;
-  reactions: string[];
   now: number;
 }
 
@@ -125,7 +124,6 @@ export interface Config {
   moveSeconds: Record<string, number>;
   biddings: Bidding[];
   seats: { min: number; max: number };
-  reactions: string[];
 }
 
 /**

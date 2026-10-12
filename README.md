@@ -53,7 +53,7 @@ everyone at their own screen beside the call. Live at
   counts, the trick on the table and the last one, never a finished trick from before (they lie face
   down, as at the table). Watchers see no hand at all. The tests and CI's smoke test check it.
 - **SSE down, JSON moves up** (`server/api.mjs`). Each page holds one `EventSource` with two named
-  events: `view` (the room as this page may see it) and `react`. Everything else is a small POST with
+  event: `view` (the room as this page may see it). Everything else is a small POST with
   the seat's token in `x-stichle-token`.
 - **The deck is code** (`src/lib/deck.ts`): every card is drawn as SVG in the page, so its foil
   gradients can follow the tilt and its words follow the language. The engravings and the pressed-ink

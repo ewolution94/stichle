@@ -10,11 +10,10 @@
   import { fromId, SUITS, type Suit } from '../lib/deck';
   import { errorText, t, suitName } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { angleOf, slotOffset, trickCardWidth, twist } from '../lib/table';
+  import { angleOf, opener, slotOffset, trickCardWidth, twist } from '../lib/table';
   import { actAt } from '../lib/waits';
   import { askTilt } from '../lib/tilt';
   import Card from './Card.svelte';
-  import Floats from './Floats.svelte';
   import Hand from './Hand.svelte';
   import Inspect from './Inspect.svelte';
   import RoundEnd from './RoundEnd.svelte';
@@ -135,7 +134,6 @@
 
   let padOpen = $state(false);
   let settingsOpen = $state(false);
-  let reactOpen = $state(false);
 
   const status = $derived.by(() => {
     if (game.phase !== 'round') return '';
@@ -150,10 +148,13 @@
         return w === mine ? t('trickYou') : t('trickOther', { name: playerAt(w)?.name ?? '' });
       }
       if (myTurn) return game.trick.cards.length ? (toFollow && canFollow ? t('playFollow', { suit: suitName(toFollow) }) : t('playAny')) : t('playLead');
-      return t('playOther', { name: turnName });
+      return game.trick.cards.length ? t('playOther', { name: turnName }) : t('playLeadOther', { name: turnName });
     }
     return '';
   });
+
+  /** Who plays the round's first card, said in the empty middle until it's played. */
+  const opens = $derived(opener(game));
 </script>
 
 <div class="table" class:my-turn={myTurn}>
@@ -178,9 +179,6 @@
       </span>
     </button>
     <div class="tools">
-      <button class="tool" type="button" onclick={() => (reactOpen = !reactOpen)} aria-label={t('react')} aria-expanded={reactOpen}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M8.5 14.2c1 1.3 2.1 1.9 3.5 1.9s2.5-.6 3.5-1.9M9.2 9.6h.01M14.8 9.6h.01" /></svg>
-      </button>
       <button class="tool" type="button" onclick={() => (padOpen = true)} aria-label={t('scorePad')}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="1.5" /><path d="M8.5 8h7M8.5 12h7M8.5 16h4" /></svg>
       </button>
@@ -188,14 +186,6 @@
       <ewo-settings-button onclick={() => (settingsOpen = true)}></ewo-settings-button>
     </div>
   </header>
-
-  {#if reactOpen}
-    <div class="reacts" role="group" aria-label={t('react')}>
-      {#each view.reactions as e, i (e)}
-        <button type="button" onclick={() => room.act('react', { e: i }).catch(() => {})}>{e}</button>
-      {/each}
-    </div>
-  {/if}
 
   <div class="felt cloth">
   <div class="seats" style:--count={others.length}>
@@ -211,7 +201,12 @@
 
   <div class="middle" bind:this={trickEl}>
     <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} {mine} {n} bind:width={trickW} bind:height={trickH} />
-    <Floats {room} {view} />
+    {#if opens >= 0 && !holding}
+      <p class="opens" aria-live="polite">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2.5 9 6 3 9.5Z" /></svg>
+        {opens === mine ? t('opensYou') : t('opensOther', { name: playerAt(opens)?.name ?? '' })}
+      </p>
+    {/if}
   </div>
   </div>
 
@@ -408,20 +403,6 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
-  .reacts {
-    display: flex;
-    justify-content: flex-end;
-    gap: 4px;
-  }
-  .reacts button {
-    width: 40px;
-    height: 40px;
-    border: 0;
-    border-radius: 50%;
-    background: rgb(10 16 46 / 0.55);
-    font-size: 21px;
-  }
-
   /* The cloth on the table: from under the bar to your seat, which sits on its near edge. */
   .cloth {
     flex: 1 1 auto;
@@ -475,6 +456,36 @@
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
+  }
+  /* The round's first card, before it's played: who leads, where the pile will be. */
+  .opens {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% -50%;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 7px 14px 7px 11px;
+    border-radius: 999px;
+    background: rgb(18 11 7 / 0.66);
+    color: var(--gold-hi);
+    font: 700 15px/1.2 var(--display);
+    white-space: nowrap;
+    box-shadow: 0 0 0 1px rgb(201 162 74 / 0.45);
+    pointer-events: none;
+    animation: opens-in 0.4s ease-out backwards;
+  }
+  .opens svg {
+    width: 10px;
+    height: 10px;
+    fill: currentColor;
+  }
+  @keyframes opens-in {
+    from {
+      opacity: 0;
+      translate: -50% -30%;
+    }
   }
 
   .dock {

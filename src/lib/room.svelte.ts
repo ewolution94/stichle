@@ -8,7 +8,6 @@ import { api, type Seat, type View } from './api';
 
 const BACKOFF = [1000, 2000, 4000, 8000, 15000];
 
-type ReactListener = (event: { player: string; e: number }) => void;
 
 /** One stream, either a player's (with a seat) or the big screen's (code only). */
 export class Room {
@@ -25,7 +24,6 @@ export class Room {
   #attempt = 0;
   #timer = 0;
   #closed = false;
-  #react = new Set<ReactListener>();
   #ready = new Set<() => void>();
 
   constructor(
@@ -81,11 +79,6 @@ export class Room {
     return Math.max(0, at - (now + this.offset));
   }
 
-  onReact(fn: ReactListener) {
-    this.#react.add(fn);
-    return () => this.#react.delete(fn);
-  }
-
   #open() {
     clearTimeout(this.#timer);
     this.#source?.close();
@@ -104,10 +97,6 @@ export class Room {
       this.view = view;
       for (const done of [...this.#ready]) done();
       if (view.phase === 'gone') this.close();
-    });
-    source.addEventListener('react', (event) => {
-      const body = parse<{ player: string; e: number }>(event);
-      if (body) for (const fn of this.#react) fn(body);
     });
     source.onerror = () => {
       source.close();

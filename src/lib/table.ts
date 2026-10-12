@@ -2,6 +2,16 @@
 // your left, across the top, and round to your right (clockwise, as at a real table). Spectators see
 // it from the first seat.
 
+import type { Game } from './api';
+
+/** Who plays the round's first card (left of the dealer), from the deal until that card is on the
+ *  table; -1 after it, and between rounds. Shown on their place card and in the empty middle. */
+export function opener(game: Game) {
+  if (game.phase !== 'round' || game.stage === 'done') return -1;
+  if (game.trick.cards.length || game.won.some((w) => w > 0)) return -1;
+  return game.trick.lead;
+}
+
 let uid = 0;
 /** A fresh id for one drawn card, so its foil gradients never clash with another card's. */
 export const nextUid = () => ++uid;

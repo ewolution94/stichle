@@ -1,13 +1,13 @@
 <!--
-  Your collection (R2): your record on this device, the twelve achievements as seals (earned in gold,
-  the rest as pale imprints with how far you've got), and the looks they unlock: the table, the cards'
-  backs and their edges. A code carries it all to another device. Opened from Settings and from the
-  start page.
+  Your collection (R2), in three tabs so each has room (the user, 2026-10-13: "too crammed"): the
+  twelve achievements as seals (earned in gold, the rest as pale imprints with how far you've got);
+  the looks they unlock (the table, the cards' backs, their edges); and your record on this device,
+  with the code that carries it all to another. Opened from Settings and from the start page.
 -->
 <script lang="ts">
   import { ACHIEVEMENTS, progress, unlocked, unlockedBy, type BackId, type TableId } from '../lib/achievements';
   import { rewardName, t } from '../lib/i18n.svelte';
-  import { choose, exportCode, importCode, profile } from '../lib/profile.svelte';
+  import { choose, earnedCount, exportCode, importCode, profile } from '../lib/profile.svelte';
   import { ui } from '../lib/ui.svelte';
   import Card from './Card.svelte';
   import Seal from './Seal.svelte';
@@ -15,6 +15,8 @@
   const BACKS: BackId[] = ['ultramarin', 'bordeaux', 'waldgruen', 'nacht', 'silber', 'kupfer', 'gold'];
   const TABLES: TableId[] = ['spieltisch', 'burgtafel', 'pergament', 'millefleurs', 'karmesin', 'nachtblau'];
 
+  type Tab = 'achievements' | 'look' | 'record';
+  let tab: Tab = $state('achievements');
   let shown = $state(false);
   $effect(() => {
     if (ui.collection) shown = true;
@@ -49,97 +51,113 @@
   <span slot="heading">{t('collection')}</span>
   {#if shown}
     <div class="body">
-      <dl class="stats">
-        <div><dt>{t('statsGames')}</dt><dd class="display">{profile.games}</dd></div>
-        <div><dt>{t('statsWins')}</dt><dd class="display">{profile.wins}</dd></div>
-        <div><dt>{t('statsRounds')}</dt><dd class="display">{profile.rounds}</dd></div>
-        <div><dt>{t('statsMet')}</dt><dd class="display">{metShare}%</dd></div>
-        <div><dt>{t('statsStreak')}</dt><dd class="display">{profile.bestStreak}</dd></div>
-      </dl>
+      <ewo-segmented stretch value={tab} label={t('collection')} onchange={(e) => (tab = e.detail.value as Tab)}>
+        <option value="achievements">{t('achievements')}</option>
+        <option value="look">{t('look')}</option>
+        <option value="record">{t('record')}</option>
+      </ewo-segmented>
 
-      <section>
-        <h3 class="label">{t('achievements')}</h3>
-        <ul class="achievements">
-          {#each ACHIEVEMENTS as a (a.id)}
-            {@const earned = Boolean(profile.earned[a.id])}
-            <li class:earned>
-              <Seal glyph={a.glyph} {earned} size={46} />
-              <span class="what">
-                <b>{t(`ach_${a.id}`)}</b>
-                <small>{t(`achDesc_${a.id}`)}{#if a.goal && !earned} · {progress(profile, a.id)}/{a.goal}{/if}</small>
-                <small class="reward">{t('unlocks', { what: rewardName(a.reward) })}</small>
-              </span>
-            </li>
-          {/each}
-        </ul>
-      </section>
-
-      <section>
-        <h3 class="label">{t('look')}</h3>
-        <span class="sub">{t('lookTable')}</span>
-        <div class="tables" role="radiogroup" aria-label={t('lookTable')}>
-          {#each TABLES as table (table)}
-            {@const open = unlocked(profile, 'table', table)}
-            <button
-              type="button"
-              role="radio"
-              class="table"
-              aria-checked={profile.look.table === table}
-              disabled={!open}
-              title={open ? t(`look_${table}`) : lockedBy('table', table)}
-              onclick={() => choose('table', table)}
-            >
-              <span class="mini-table" class:locked={!open}>
-                <span class="board" data-table={table}><span class="felt" data-table={table}></span></span>
-                {#if !open}<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{/if}
-              </span>
-              <small>{t(`look_${table}`)}</small>
-              {#if !open}<small class="how">{lockedBy('table', table)}</small>{/if}
-            </button>
-          {/each}
-        </div>
-        <span class="sub">{t('lookBack')}</span>
-        <div class="backs" role="radiogroup" aria-label={t('lookBack')}>
-          {#each BACKS as back (back)}
-            {@const open = unlocked(profile, 'back', back)}
-            <button
-              type="button"
-              role="radio"
-              class="back"
-              aria-checked={profile.look.back === back}
-              disabled={!open}
-              title={open ? t(`look_${back}`) : lockedBy('back', back)}
-              onclick={() => choose('back', back)}
-            >
-              <span class="mini" class:locked={!open}>
-                <Card back previewBack={back} />
-                {#if !open}<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{/if}
-              </span>
-              <small>{t(`look_${back}`)}</small>
-            </button>
-          {/each}
-        </div>
-        <span class="sub">{t('lookEdge')}</span>
-        <div class="pair">
-          {#each ['plain', 'gold'] as edge (edge)}
-            {@const open = unlocked(profile, 'edge', edge)}
-            <button type="button" class="chip" aria-pressed={profile.look.edge === edge} disabled={!open} title={open ? '' : lockedBy('edge', edge)} onclick={() => choose('edge', edge)}>
-              {t(`look_${edge as 'plain' | 'gold'}`)}
-            </button>
-          {/each}
-        </div>
-      </section>
-
-      <section>
-        <h3 class="label">{t('transfer')}</h3>
-        <p class="hint">{t('transferHint')}</p>
-        <button class="btn small" type="button" onclick={copy}>{copied ? t('codeCopied') : t('copyCode')}</button>
-        <form class="load" onsubmit={load}>
-          <input class="input" bind:value={paste} placeholder={t('pasteCode')} aria-label={t('pasteCode')} autocomplete="off" spellcheck="false" />
-          <button class="btn small" type="submit" disabled={!paste.trim()}>{t('loadCode')}</button>
-        </form>
-        {#if message}<p class="hint" role="status">{message}</p>{/if}
-      </section>
+      {#if tab === 'achievements'}
+        <section>
+          <p class="hint">{t('achievementsHint', { n: earnedCount(), of: ACHIEVEMENTS.length })}</p>
+          <ul class="achievements">
+            {#each ACHIEVEMENTS as a (a.id)}
+              {@const earned = Boolean(profile.earned[a.id])}
+              <li class:earned>
+                <Seal glyph={a.glyph} {earned} size={46} />
+                <span class="what">
+                  <b>{t(`ach_${a.id}`)}</b>
+                  <small>{t(`achDesc_${a.id}`)}</small>
+                  {#if a.goal && !earned}
+                    <small class="progress"><span class="bar"><i style:width="{(progress(profile, a.id) / a.goal) * 100}%"></i></span>{progress(profile, a.id)}/{a.goal}</small>
+                  {/if}
+                  <small class="reward">{t('unlocks', { what: rewardName(a.reward) })}</small>
+                </span>
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {:else if tab === 'look'}
+        <p class="hint">{t('lookHint')}</p>
+        <section>
+          <h3 class="label">{t('lookTable')}</h3>
+          <div class="tables" role="radiogroup" aria-label={t('lookTable')}>
+            {#each TABLES as table (table)}
+              {@const open = unlocked(profile, 'table', table)}
+              <button
+                type="button"
+                role="radio"
+                class="table"
+                aria-checked={profile.look.table === table}
+                disabled={!open}
+                title={open ? t(`look_${table}`) : lockedBy('table', table)}
+                onclick={() => choose('table', table)}
+              >
+                <span class="mini-table" class:locked={!open}>
+                  <span class="board" data-table={table}><span class="felt" data-table={table}></span></span>
+                  {#if !open}<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{/if}
+                </span>
+                <small>{t(`look_${table}`)}</small>
+                {#if !open}<small class="how">{lockedBy('table', table)}</small>{/if}
+              </button>
+            {/each}
+          </div>
+        </section>
+        <section>
+          <h3 class="label">{t('lookBack')}</h3>
+          <div class="backs" role="radiogroup" aria-label={t('lookBack')}>
+            {#each BACKS as back (back)}
+              {@const open = unlocked(profile, 'back', back)}
+              <button
+                type="button"
+                role="radio"
+                class="back"
+                aria-checked={profile.look.back === back}
+                disabled={!open}
+                title={open ? t(`look_${back}`) : lockedBy('back', back)}
+                onclick={() => choose('back', back)}
+              >
+                <span class="mini" class:locked={!open}>
+                  <Card back previewBack={back} />
+                  {#if !open}<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{/if}
+                </span>
+                <small>{t(`look_${back}`)}</small>
+              </button>
+            {/each}
+          </div>
+        </section>
+        <section>
+          <h3 class="label">{t('lookEdge')}</h3>
+          <div class="pair">
+            {#each ['plain', 'gold'] as edge (edge)}
+              {@const open = unlocked(profile, 'edge', edge)}
+              <button type="button" class="chip" aria-pressed={profile.look.edge === edge} disabled={!open} title={open ? '' : lockedBy('edge', edge)} onclick={() => choose('edge', edge)}>
+                {t(`look_${edge as 'plain' | 'gold'}`)}
+              </button>
+            {/each}
+          </div>
+        </section>
+      {:else}
+        <section>
+          <dl class="stats">
+            <div><dt>{t('statsGames')}</dt><dd class="display">{profile.games}</dd></div>
+            <div><dt>{t('statsWins')}</dt><dd class="display">{profile.wins}</dd></div>
+            <div><dt>{t('statsRounds')}</dt><dd class="display">{profile.rounds}</dd></div>
+            <div><dt>{t('statsMet')}</dt><dd class="display">{metShare}%</dd></div>
+            <div><dt>{t('statsStreak')}</dt><dd class="display">{profile.bestStreak}</dd></div>
+          </dl>
+        </section>
+        <section>
+          <h3 class="label">{t('transfer')}</h3>
+          <p class="hint">{t('transferHint')}</p>
+          <button class="btn small" type="button" onclick={copy}>{copied ? t('codeCopied') : t('copyCode')}</button>
+          <form class="load" onsubmit={load}>
+            <input class="input" bind:value={paste} placeholder={t('pasteCode')} aria-label={t('pasteCode')} autocomplete="off" spellcheck="false" />
+            <button class="btn small" type="submit" disabled={!paste.trim()}>{t('loadCode')}</button>
+          </form>
+          {#if message}<p class="hint" role="status">{message}</p>{/if}
+        </section>
+      {/if}
     </div>
   {/if}
 </ewo-sheet>
@@ -148,39 +166,44 @@
   .body {
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 20px;
     padding-bottom: 12px;
   }
   .stats {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 10px;
     margin: 0;
   }
   .stats div {
     display: flex;
     flex-direction: column-reverse;
     align-items: center;
-    gap: 2px;
-    padding: 8px 2px;
-    border-radius: 10px;
+    gap: 6px;
+    padding: 14px 6px 12px;
+    border-radius: 12px;
     background: var(--paper-2);
   }
   .stats dt {
-    font: 600 10px/1.2 var(--ewo-sans);
+    font: 600 11px/1.2 var(--ewo-sans);
     letter-spacing: 0.04em;
     color: var(--mute);
     text-align: center;
   }
   .stats dd {
     margin: 0;
-    font-size: 22px;
+    font-size: 30px;
     line-height: 1;
   }
   section {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+  }
+  /* Parts of one tab: a hairline and some air between them. */
+  section + section {
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
   }
   h3 {
     margin: 0;
@@ -188,7 +211,7 @@
   .achievements {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 10px 14px;
+    gap: 0 18px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -196,7 +219,9 @@
   .achievements li {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgb(28 26 34 / 0.08);
     opacity: 0.72;
   }
   .achievements li.earned {
@@ -218,9 +243,27 @@
   .what .reward {
     color: var(--gold-lo);
   }
-  .sub {
-    font: 600 12px/1 var(--ewo-sans);
-    color: var(--ink-2);
+  .progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 2px 0;
+    font-family: var(--ewo-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .bar {
+    position: relative;
+    width: 96px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgb(28 26 34 / 0.12);
+    overflow: hidden;
+  }
+  .bar i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: inherit;
+    background: var(--gold);
   }
   .backs {
     display: flex;

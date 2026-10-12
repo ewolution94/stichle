@@ -14,7 +14,8 @@
   import { prefs, setArt } from '../lib/prefs.svelte';
   import type { Art } from '../lib/deck';
   import { play, setSound, sound } from '../lib/sound.svelte';
-  import { earnedCount } from '../lib/profile.svelte';
+  import { earnedCount, profile } from '../lib/profile.svelte';
+  import Seal from './Seal.svelte';
   import { ACHIEVEMENTS } from '../lib/achievements';
   import { ui } from '../lib/ui.svelte';
   import { actAt } from '../lib/waits';
@@ -113,6 +114,14 @@
         {#if error}<p class="error" role="alert">{error}</p>{/if}
       </section>
     {/if}
+    <!-- Your collection: its own panel, apart from the settings (the user, 2026-10-13). -->
+    <button class="collection" type="button" onclick={() => (onclose(), (ui.collection = true))}>
+      <span class="seals" aria-hidden="true">
+        {#each ACHIEVEMENTS.slice(0, 3) as a (a.id)}<Seal glyph={a.glyph} earned={Boolean(profile.earned[a.id])} size={34} />{/each}
+      </span>
+      <span class="name"><b>{t('yourCollection')}</b><small>{t('earnedOf', { n: earnedCount(), of: ACHIEVEMENTS.length })}</small></span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+    </button>
     <section>
       <h3 class="label">{t('general')}</h3>
       <div class="row">
@@ -125,11 +134,7 @@
       </div>
     </section>
     <section>
-      <h3 class="label">Stichle</h3>
-      <div class="row">
-        <span class="name">{t('yourCollection')}<small>{t('earnedOf', { n: earnedCount(), of: ACHIEVEMENTS.length })}</small></span>
-        <button class="btn small" type="button" onclick={() => (onclose(), (ui.collection = true))}>{t('collection')}</button>
-      </div>
+      <h3 class="label">{t('cardsAndSound')}</h3>
       <div class="row">
         <span class="name">{t('cardArt')}</span>
         <ewo-segmented stretch value={prefs.art} label={t('cardArt')} onchange={(e) => setArt(e.detail.value as Art)}>
@@ -156,8 +161,56 @@
   section {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
     padding-bottom: 8px;
+  }
+  /* The parts apart: a hairline and some air between them. */
+  section + section {
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+  .collection {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    margin-bottom: 20px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper-2);
+    color: var(--ink);
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .collection .seals {
+    display: flex;
+    flex: none;
+  }
+  .collection .seals > :global(* + *) {
+    margin-left: -10px;
+  }
+  .collection .name {
+    flex: 1;
+    min-width: 0;
+  }
+  .collection b {
+    font: 700 16px/1.2 var(--display);
+  }
+  .chev {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: var(--mute);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  @media (hover: hover) {
+    .collection:hover {
+      background: #ece6d8;
+    }
   }
   h3 {
     margin: 0;
