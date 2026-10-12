@@ -13,7 +13,8 @@
 // hand: a card 74 px wide shows a strip of about 26 px, which is 88 units here.
 
 import type { BackId } from './achievements';
-import { FIGURES, LADDER, silhouette, type FigureId } from './figures.js';
+import { FIGURES, silhouette, type Figure } from './figures.js';
+import { personOf } from './people.js';
 
 export type Suit = 'fire' | 'water' | 'earth' | 'air';
 /** How the cards look: the people of a medieval town (the default), or the classic letterpress deck. */
@@ -167,7 +168,16 @@ const svg = (defs: string, body: string) => `<svg viewBox="0 0 250 350" xmlns="h
 const corners = (inner: string) => `<g>${inner}</g><g transform="rotate(180 125 175)">${inner}</g>`;
 const frames = (st: string) => `<rect x="11" y="11" width="228" height="328" rx="8" fill="none" stroke="${st}" stroke-width="1"/><rect x="15.5" y="15.5" width="219" height="319" rx="6" fill="none" stroke="${st}" stroke-width="2.2"/>`;
 const index = (txt: string | number, fill: string, mark: string) => `<text x="47" y="63" text-anchor="middle" ${BODONI} font-weight="800" font-size="50" style="font-variation-settings:'opsz' 14" fill="${fill}">${txt}</text>${mark}`;
-const label = (txt: string, fill: string) => `<text x="125" y="318" text-anchor="middle" ${BODONI} font-weight="700" font-size="13" letter-spacing="5" fill="${fill}">${txt.toUpperCase()}</text>`;
+/**
+ * The person's name under the picture, in spaced capitals. The bottom-right index takes the right
+ * side, so a longer name (the elements' people: Kerzenzieherin, Drachentöter) sets smaller and
+ * tighter and moves left, to stay clear of it.
+ */
+const label = (txt: string, fill: string) => {
+  const n = [...txt].length;
+  const [x, size, spacing] = n <= 7 ? [125, 13, 5] : n <= 8 ? [118, 12, 3.5] : n <= 11 ? [112, 11.5, 2.4] : [110, 10, 1.2];
+  return `<text x="${x}" y="318" text-anchor="middle" ${BODONI} font-weight="700" font-size="${size}" letter-spacing="${spacing}" fill="${fill}">${txt.toUpperCase()}</text>`;
+};
 
 /** The fire in a figure's hands is orange; the other elements glow in their own colour. */
 const GLOW: Record<Suit, string> = { fire: '#ff8a3c', water: '#8fd0ff', earth: '#7be0a2', air: '#ffe27a' };
@@ -179,7 +189,7 @@ const LINEN = '#fbfaf6';
  * against gold, the Jesters against silver, each with its element's light. The corner indices sit on
  * plates of the card's own paper, so the hand reads exactly as with the classic deck.
  */
-function figureCard(c: Face & { s: Suit }, fig: FigureId, lang: Lang, u: string) {
+function figureCard(c: Face & { s: Suit }, fig: Figure, lang: Lang, u: string) {
   const t = WORDS[lang];
   const ink = INK[c.s];
   const g = `url(#st-gold-${u})`;
@@ -208,7 +218,7 @@ function figureCard(c: Face & { s: Suit }, fig: FigureId, lang: Lang, u: string)
     <path d="M233,333H174V266Q174,250 190,250H233Z" fill="${ground}"/>
     ${frames(rule)}
     ${corners(index(txt, rule === BLACK ? BLACK : rule, mark))}
-    ${label(FIGURES[fig].names[lang], BLACK)}`);
+    ${label(fig.names[lang], BLACK)}`);
 }
 
 /** One card as SVG. `uid` keeps the card's own gradient ids apart from every other card on the page. */
@@ -227,7 +237,8 @@ const BACKS: Record<BackId, { ground: string; foil: [number, string][]; lines?: 
 export function card(c: Face, { lang = 'de', uid = 0, art = 'figures', back = 'ultramarin' }: { lang?: Lang; uid?: number | string; art?: Art; back?: BackId } = {}) {
   const t = WORDS[lang], u = String(uid);
   if (art === 'figures' && c.k !== 'back') {
-    const fig = c.k === 'num' ? LADDER[c.v] : c.k === 'z' ? 'wizard' : 'jester';
+    // The number's person in its element (people.js); the Wizard and the Jester are everyone's.
+    const fig = c.k === 'num' ? personOf(c.s, c.v) : FIGURES[c.k === 'z' ? 'wizard' : 'jester'];
     if (fig) return figureCard(c, fig, lang, u);
   }
   if (c.k === 'num') {

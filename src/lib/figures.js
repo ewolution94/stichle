@@ -453,6 +453,9 @@ export const FIGURES = {
   },
 };
 
+// The drawing helpers, for the elements' own people (people.js), drawn the same way.
+export { smooth, poly, ellipse, circle, limb, star, head, face, legs, feet, gown };
+
 /** Who stands on each number, 1 to 13. */
 export const LADDER = [null, 'beggar', 'maid', 'farmhand', 'shepherdess', 'farmer', 'miller', 'smith', 'merchant', 'monk', 'knight', 'duchess', 'queen', 'king'];
 
@@ -463,7 +466,7 @@ const K = '#1c1a22';
  * linen, and the suit's sign left bright. `emblem()` draws the suit's sign on the knight's shield.
  */
 export function silhouette(id, { gold, glow, paper, emblem }) {
-  const fig = FIGURES[id];
+  const fig = typeof id === 'string' ? FIGURES[id] : id;
   let out = '';
   for (const [role, d] of fig.parts) {
     if (role === 'emblem') out += emblem();
