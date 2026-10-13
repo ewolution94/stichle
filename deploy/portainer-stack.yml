@@ -27,6 +27,12 @@ services:
       # The shared network Census listens on. It must exist before this stack is created
       # (Portainer → Networks → `ewolution`).
       - ewolution
+    healthcheck:
+      # Every ~10 minutes, each container on its own interval so they never line up (plans/nas-load.md).
+      interval: 740s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     labels:
       # The opt-in the shared Watchtower looks for (it runs with
       # WATCHTOWER_LABEL_ENABLE=true, so unlabelled containers are never touched).
