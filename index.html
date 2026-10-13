@@ -45,7 +45,7 @@
          Vite's minifier turns an animation shorthand without a name into `animation: none`. The mark's
          <svg> is 0 × 0 in the markup, so without this style (offline, a blocked file) nothing shows. */
       #splash { display: none; }
-      .splash #splash { position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center; background: #622615; touch-action: none; }
+      .splash #splash { position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center; background: #1f5a3c; touch-action: none; }
       #splash svg { width: 120px; height: 120px; translate: 0 calc(-1 * var(--splash-lift, 0px)); }
       #splash :where(g[class], .trace) { transform-box: view-box; animation-duration: 560ms; animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1); animation-delay: 60ms; animation-fill-mode: both; }
       #splash .gl { animation-name: splash-glint; animation-duration: 640ms; }
