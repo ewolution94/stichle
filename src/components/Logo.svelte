@@ -1,2 +1,2 @@
-<!-- The name in Bodoni, with the deck's gold compass rose (src/lib/deck.ts draws it on the Wizards). -->
+<!-- The name in Stichle Display, with the deck's gold compass rose (src/lib/deck.ts draws it on the Wizards). -->
 <span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 13.6 9.6 12 8.6 10.4 9.6ZM22.5 12 14.4 13.6 15.4 12 14.4 10.4ZM12 22.5 10.4 14.4 12 15.4 13.6 14.4ZM1.5 12 9.6 10.4 8.6 12 9.6 13.6Z" fill="#e9c66a" /><path d="M12 6.2 13 11 12 12 11 11ZM17.8 12 13 13 12 12 13 11ZM12 17.8 11 13 12 12 13 13ZM6.2 12 11 11 12 12 11 13Z" fill="#c9a24a" transform="rotate(45 12 12)" /><circle cx="12" cy="12" r="1.6" fill="#1d2b62" stroke="#e9c66a" stroke-width="0.8" /></svg>Stichle</span>

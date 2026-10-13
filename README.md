@@ -34,8 +34,9 @@ everyone at their own screen beside the call. Live at
 - **The look: Prägung**, letterpress. The cards are cotton paper pressed in four inks with
   guilloche engraving (each number card's has as many lobes as its value); gold foil on the black
   Wizards and the back, silver on the Jesters. The app sits on the card table itself, an ultramarine
-  cloth; panels are the cards' paper with their double rule. Bodoni Moda for numbers and headings,
-  Geist for the rest. Light only.
+  cloth; panels are the cards' paper with their double rule. Stichle Display (Metamorphous with a
+  round u, built by `tools/font/round-u.py`, SIL OFL) for numbers, headings and the cards; Geist for
+  the rest. Light only.
 - German and English; the cards follow (Z and N, or W and J).
 
 ## How it works

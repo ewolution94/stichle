@@ -1,11 +1,21 @@
 /* Stichle's look: Prägung, letterpress (development/plans/stichle.md → Look). Everything sits on the
    table each player chose (a green card table to start with); the panels are the cards' own cotton paper
-   with their double rule; numbers and headings in Bodoni Moda, pressed in; gold only where something
+   with their double rule; numbers and headings in Stichle Display, pressed in; gold only where something
    is special. Light only, by decision (like CDNMS and Kritzle): the cards are paper.
    Folio's tokens and elements are the bones (vendor/ewo); the tokens it shares point at these. */
 @import '../vendor/ewo/tokens/index.css';
 @import '../vendor/ewo/tokens/base.css';
-@import '@fontsource-variable/bodoni-moda/opsz.css';
+
+/* Stichle Display: Metamorphous with a round u (tools/font/round-u.py, SIL OFL, src/fonts/OFL.txt).
+   Bodoni's hairlines vanished in the table codes (the user, 2026-10-13). One weight, declared for the
+   whole range, so a bold heading is this face as drawn, never a smeared fake bold. */
+@font-face {
+  font-family: 'Stichle Display';
+  src: url('./fonts/stichle-display.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root,
 :root[data-theme='dark'] {
@@ -43,7 +53,7 @@
   --good: #1d6849;
   --bad: #b3261e;
 
-  --display: 'Bodoni Moda Variable', 'Bodoni Moda', Didot, 'Times New Roman', serif;
+  --display: 'Stichle Display', Georgia, 'Times New Roman', serif;
   --shadow: 0 1px 0 rgb(10 14 40 / 0.25), 0 14px 26px -16px rgb(5 8 25 / 0.75);
 
   --gutter: clamp(16px, 3vw, 40px);
@@ -424,9 +434,6 @@ button {
 .display {
   font-family: var(--display);
   font-weight: 700;
-  /* Bodoni's optical sizes follow the font size: hairlines that vanish at 15 px get heavier there. */
-  font-optical-sizing: auto;
-  letter-spacing: -0.005em;
 }
 .pressed {
   text-shadow: 0 1px 0 rgb(255 255 255 / 0.7), 0 -1px 0 rgb(0 0 0 / 0.12);
@@ -640,7 +647,7 @@ button {
   }
 }
 
-/* The logo (Logo.svelte): the name in Bodoni, a gold compass rose for the dot on the i. */
+/* The logo (Logo.svelte): the name in Stichle Display, a gold compass rose for the dot on the i. */
 .logo {
   display: inline-flex;
   align-items: center;

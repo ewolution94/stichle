@@ -163,20 +163,38 @@ const foil = (id: string, stops: [number, string][], k: number) =>
 
 // ---------- The cards ----------
 
-const BODONI = `font-family="'Bodoni Moda Variable', 'Bodoni Moda', Didot, 'Times New Roman', serif"`;
+/** The app's display face (src/app.css → @font-face): Metamorphous with a round u. */
+const DISPLAY = `font-family="'Stichle Display', Georgia, 'Times New Roman', serif"`;
 const svg = (defs: string, body: string) => `<svg viewBox="0 0 250 350" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>${defs}</defs>${body}</svg>`;
 const corners = (inner: string) => `<g>${inner}</g><g transform="rotate(180 125 175)">${inner}</g>`;
 const frames = (st: string) => `<rect x="11" y="11" width="228" height="328" rx="8" fill="none" stroke="${st}" stroke-width="1"/><rect x="15.5" y="15.5" width="219" height="319" rx="6" fill="none" stroke="${st}" stroke-width="2.2"/>`;
-const index = (txt: string | number, fill: string, mark: string) => `<text x="47" y="63" text-anchor="middle" ${BODONI} font-weight="800" font-size="50" style="font-variation-settings:'opsz' 14" fill="${fill}">${txt}</text>${mark}`;
+const index = (txt: string | number, fill: string, mark: string) => `<text x="47" y="63" text-anchor="middle" ${DISPLAY} font-weight="800" font-size="50" fill="${fill}">${txt}</text>${mark}`;
+/** Stichle Display's capitals, in thousandths of an em (the font's own advance widths). */
+const CAPS: Record<string, number> = {
+  A: 749, B: 747, C: 748, D: 750, E: 749, F: 666, G: 830, H: 829, I: 414, J: 333, K: 749, L: 666, M: 1086,
+  N: 832, O: 832, P: 665, Q: 832, R: 749, S: 666, T: 749, U: 830, V: 747, W: 1085, X: 749, Y: 747, Z: 666,
+  Ä: 749, Ö: 832, Ü: 830, ' ': 333, '-': 664, "'": 250,
+};
+/** How wide a name sets in px of the card (letter-spacing follows every letter, the last one too). */
+const capsWidth = (txt: string, size: number, spacing: number) => [...txt].reduce((w, ch) => w + ((CAPS[ch] ?? 750) * size) / 1000 + spacing, 0);
+/** From the left frame to the bottom-right index's plate: the room a name has. */
+const NAME_LEFT = 24;
+const NAME_RIGHT = 170;
+const NAME_STEPS: [number, number][] = [[13, 5], [12, 3.5], [11.5, 2.4], [10.5, 1.6], [10, 1.2], [9.5, 0.8]];
 /**
  * The person's name under the picture, in spaced capitals. The bottom-right index takes the right
- * side, so a longer name (the elements' people: Kerzenzieherin, Drachentöter) sets smaller and
- * tighter and moves left, to stay clear of it.
+ * side, so a longer name (Kerzenzieherin, Lady of the harbour) sets smaller and tighter and moves
+ * left, to stay clear of it: the largest step that fits, measured with the font's own widths; the
+ * very longest is pressed to the room there is.
  */
 const label = (txt: string, fill: string) => {
-  const n = [...txt].length;
-  const [x, size, spacing] = n <= 7 ? [125, 13, 5] : n <= 8 ? [118, 12, 3.5] : n <= 11 ? [112, 11.5, 2.4] : [110, 10, 1.2];
-  return `<text x="${x}" y="318" text-anchor="middle" ${BODONI} font-weight="700" font-size="${size}" letter-spacing="${spacing}" fill="${fill}">${txt.toUpperCase()}</text>`;
+  const caps = txt.toUpperCase();
+  const room = NAME_RIGHT - NAME_LEFT;
+  const [size, spacing] = NAME_STEPS.find(([s, sp]) => capsWidth(caps, s, sp) <= room) ?? NAME_STEPS[NAME_STEPS.length - 1];
+  const width = Math.min(capsWidth(caps, size, spacing), room);
+  const x = Math.min(125, NAME_RIGHT - width / 2);
+  const press = capsWidth(caps, size, spacing) > room ? ` textLength="${room}" lengthAdjust="spacingAndGlyphs"` : '';
+  return `<text x="${f(x)}" y="318" text-anchor="middle" ${DISPLAY} font-weight="700" font-size="${size}" letter-spacing="${spacing}"${press} fill="${fill}">${caps}</text>`;
 };
 
 /** The fire in a figure's hands is orange; the other elements glow in their own colour. */
@@ -247,7 +265,7 @@ export function card(c: Face, { lang = 'de', uid = 0, art = 'figures', back = 'u
       <use href="#st-ros-${c.v}" fill="none" stroke="${ink}" stroke-width=".55" opacity=".5"/>
       <circle cx="125" cy="175" r="57" fill="${tint}" stroke="${ink}" stroke-width=".9"/>
       <circle cx="125" cy="175" r="84" fill="none" stroke="${ink}" stroke-width=".9"/>
-      <text x="125" y="${f(175 + size * .35)}" text-anchor="middle" ${BODONI} font-weight="700" font-size="${size}" style="font-variation-settings:'opsz' 72" fill="${ink}" filter="url(#st-press)">${c.v}</text>
+      <text x="125" y="${f(175 + size * .35)}" text-anchor="middle" ${DISPLAY} font-weight="700" font-size="${size}" fill="${ink}" filter="url(#st-press)">${c.v}</text>
       <path d="${shapeD(sh, 125, 72, 13)}" fill="${ink}"/>
       <path d="${shapeD(sh, 125, 278, 13)}" fill="${ink}" transform="rotate(180 125 278)"/>
       ${corners(index(c.v, ink, `<path d="${shapeD(sh, 47, 88, 12)}" fill="${ink}"/>`))}`);
