@@ -67,7 +67,15 @@
   // The fan from Folio's card kit (card-fan.js): few cards are held bigger, a full hand shrinks to
   // fit (never below 62 px) and goes to two rows; a laptop's wider table lets them grow a little.
   const fan = $derived(cards.filter((c) => c !== air?.card));
-  const layout = $derived(fanLayout(fan, { width, count: cards.length, sizes: width > 600 ? [124, 112, 100] : [104, 92, 84] }));
+  const sizes = $derived<[number, number, number]>(width > 600 ? [124, 112, 100] : [104, 92, 84]);
+  // The hand's box keeps one height all game: the tallest any hand gets at this width (a few cards,
+  // held big), with the cards at its foot. A card leaving the hand changes their size, never the box,
+  // so the table above never moves (the user, 2026-10-13: "it cannot jump").
+  const room = $derived(
+    Math.max(...Array.from({ length: 20 }, (_, i) => fanLayout(Array.from({ length: i + 1 }, (_, k) => `${k}`), { width, count: i + 1, sizes }).height)),
+  );
+  const natural = $derived(fanLayout(fan, { width, count: cards.length, sizes }));
+  const layout = $derived(fanLayout(fan, { width, count: cards.length, sizes, top: 22 + room - natural.height }));
   const cw = $derived(layout.cw);
   const ch = $derived(layout.ch);
   const height = $derived(layout.height);

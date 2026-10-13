@@ -29,6 +29,28 @@ async function person(name) {
       // The how-to opens on a first visit (Guide.svelte); these players have read it.
       localStorage.setItem('stichle:guide', '1');
     } catch {}
+    // The table never changes size or place while you play (the user, 2026-10-13: "it cannot jump"):
+    // every frame, the cloth, the trick's area, your place card and your hand's box are measured, and
+    // any move is written down with what the status line said.
+    const watched = ['.table .cloth', '.table .middle', '.table .dock > div.mine', '.table .hand'];
+    const last = new Map();
+    window.__jumps = [];
+    const look = () => {
+      for (const sel of watched) {
+        const el = document.querySelector(sel);
+        if (!el) {
+          last.delete(sel);
+          continue;
+        }
+        const r = el.getBoundingClientRect();
+        const now = [r.left, r.top, r.width, r.height].map(Math.round).join(',');
+        const was = last.get(sel);
+        if (was && was !== now) window.__jumps.push(`${sel}: ${was} → ${now} (${document.querySelector('.status, .toast')?.textContent ?? (document.querySelector('.panel') ? 'panel' : '-')})`);
+        last.set(sel, now);
+      }
+      requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
   });
   const page = await context.newPage();
   page.on('console', (m) => m.type() === 'error' && problems.push(`${name} console: ${m.text()}`));
@@ -217,6 +239,11 @@ await host.page.waitForSelector('.final', { timeout: 10000 });
 await guest.page.waitForSelector('.final', { timeout: 10000 });
 await snap(host, 'final');
 await snap(guest, 'final');
+
+for (const p of [host, guest]) {
+  const jumps = await p.page.evaluate(() => window.__jumps);
+  if (jumps.length) problems.push(`${p.name}: the table moved ${jumps.length}×:\n  ${[...new Set(jumps)].slice(0, 12).join('\n  ')}`);
+}
 
 say(problems.length ? `PROBLEMS:\n${problems.join('\n')}` : 'no problems');
 await browser.close();

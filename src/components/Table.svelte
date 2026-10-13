@@ -299,6 +299,7 @@
   }
 
   .top {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -401,7 +402,9 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
-  /* The cloth on the table: from under the bar to your seat, which sits on its near edge. */
+  /* The cloth on the table: from under the bar to your seat, which sits on its near edge. Its size
+     comes from the screen alone: the bar and the dock below keep fixed heights, and whatever comes
+     and goes (the status, the bid, the trump pick) floats over it. */
   .cloth {
     flex: 1 1 auto;
     min-height: 0;
@@ -465,10 +468,17 @@
     gap: 6px;
   }
   /* On the table's near edge, whatever the table: a small dark plate of its own, so it reads on the
-     tapestry's flowers and on the vellum alike. */
+     tapestry's flowers and on the vellum alike. It floats just above your place card, like the bid,
+     so coming and going it never takes room from the cloth (the user, 2026-10-13: the table jumped
+     when the line went quiet at the end of a trick and when the bid opened). */
   .status,
   .toast {
-    align-self: center;
+    position: absolute;
+    z-index: 10;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    translate: -50% 0;
+    width: max-content;
     max-width: 100%;
     margin: 0;
     padding: 4px 12px;
