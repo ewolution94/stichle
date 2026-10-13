@@ -57,6 +57,23 @@
   $effect(() => {
     if (sel && !cards.includes(sel)) sel = null;
   });
+  // A lifted card drops back when you tap or click anywhere but the hand, or press Escape (the user,
+  // 2026-10-13: on a laptop there was no way to put it down again).
+  $effect(() => {
+    if (!sel) return;
+    const away = (e: PointerEvent) => {
+      if (!(e.target instanceof Node && box?.contains(e.target))) sel = null;
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') sel = null;
+    };
+    document.addEventListener('pointerdown', away, true);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', away, true);
+      document.removeEventListener('keydown', escape);
+    };
+  });
   // Landed, and the server's hand no longer has it: from now on it's the trick's to draw.
   $effect(() => {
     if (air?.landed && !cards.includes(air.card)) air = null;

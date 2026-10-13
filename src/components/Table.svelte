@@ -234,8 +234,9 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
           </button>
           <div class="value" role="status" aria-live="polite">
+            <!-- The number alone (the panel's label already asks for tricks); the word stays for screen readers. -->
             {#key pick}<span class="big display {bump}">{pick}</span>{/key}
-            <small>{pick === 1 ? t('trickOne') : t('trickMany')}</small>
+            <span class="sr-only">{pick === 1 ? t('trickOne') : t('trickMany')}</span>
           </div>
           <button class="step" type="button" aria-label={t('bidMore')} disabled={pick >= game.round} onclick={() => nudge(1)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12" /></svg>
@@ -572,10 +573,12 @@
     gap: 2px;
     overflow: hidden;
   }
+  /* The line is tall enough for the face's old-style digits: 6 and 8 rise, 3, 4, 5, 7 and 9 drop
+     below the line, and the box clips (for the count-up animation). */
   .big {
     display: block;
     font-size: 72px;
-    line-height: 1;
+    line-height: 1.34;
     font-variant-numeric: tabular-nums;
     color: var(--ink);
     text-shadow: 0 1px 0 rgb(255 255 255 / 0.8), 0 -1px 0 rgb(0 0 0 / 0.14);
@@ -598,12 +601,6 @@
       scale: 0.7;
       opacity: 0;
     }
-  }
-  .value small {
-    font: 600 12px/1 var(--ewo-sans);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--mute);
   }
   .sofar {
     font-size: 13px;
