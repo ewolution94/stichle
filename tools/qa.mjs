@@ -6,6 +6,7 @@
 //
 //   npm run build && node server/server.mjs --port 6311     (or the stichle-prod preview)
 //   node tools/qa.mjs [base] [outdir]          ROUNDS=3 W=390 H=844 by default
+//   CLOCK=quick (a clock per move), SLOWFONT=2000 (the display face arrives late), BIDDING=secret
 import { webkit } from '../../folio/node_modules/playwright/index.mjs';
 import { mkdirSync } from 'node:fs';
 
@@ -16,6 +17,8 @@ const ROUNDS = Number(process.env.ROUNDS ?? 3);
 const BIDDING = process.env.BIDDING ?? 'open';
 /** The clock per move: off, relaxed or quick. */
 const CLOCK = process.env.CLOCK ?? 'off';
+/** Hold the display face back this many ms, so the page starts in the fallback (a slow phone). */
+const SLOWFONT = Number(process.env.SLOWFONT ?? 0);
 const W = Number(process.env.W ?? 390), H = Number(process.env.H ?? 844);
 mkdirSync(OUT, { recursive: true });
 
@@ -53,6 +56,10 @@ async function person(name) {
       requestAnimationFrame(look);
     };
     requestAnimationFrame(look);
+  });
+  if (SLOWFONT) await context.route('**/stichle-display-*.woff2', async (route) => {
+    await new Promise((r) => setTimeout(r, SLOWFONT));
+    await route.continue();
   });
   const page = await context.newPage();
   page.on('console', (m) => m.type() === 'error' && problems.push(`${name} console: ${m.text()}`));

@@ -318,7 +318,10 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 54px;
+    /* A fixed height, not a minimum: the round's two type sizes on one line set the line box by the
+       face's measurements, so the bar was 3 px taller until Stichle Display had loaded and the
+       table under it moved (tools/qa.mjs caught it). */
+    height: 59px;
     padding-bottom: 10px;
     border-bottom: 1px solid rgb(236 230 214 / 0.12);
   }

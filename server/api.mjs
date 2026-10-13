@@ -83,7 +83,9 @@ export function createApi({ games }) {
       res.end();
       return;
     }
-    const beat = setInterval(() => res.write(': ping\n\n'), HEARTBEAT);
+    // A named event, not a comment: the page sees it, and a stream that went quiet longer than two
+    // beats is one it reopens (plans/live-connection.md). `data` mustn't be empty, or it's never sent on.
+    const beat = setInterval(() => res.write('event: ping\ndata: 1\n\n'), HEARTBEAT);
     beat.unref?.();
     const done = () => {
       clearInterval(beat);
