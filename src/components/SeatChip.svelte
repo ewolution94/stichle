@@ -47,7 +47,7 @@
         <span class="bid" class:met class:over aria-label={t('bidWon', { bid: bidValue, won })}>
           {#if pips <= 6}
             {#each { length: pips } as _, i (i)}<i class:on={i < won} class:extra={i >= bidValue}></i>{/each}
-            {#if pips === 0}<span class="zero">0</span>{/if}
+            {#if pips === 0}<b class="nil"></b>{/if}
           {:else}
             <span class="count">{won}/{bidValue}</span>
           {/if}
@@ -197,15 +197,24 @@
   .bid i.extra.on {
     background: var(--fire);
   }
-  .bid .zero,
   .bid .count,
   .bid.wait {
     font: 600 11px/1 var(--ewo-mono);
     color: var(--mute);
   }
-  .bid.met .zero,
   .bid.met .count {
     color: var(--earth);
+  }
+  /* A bid of nothing: a short rule where the pips would be, not a "0" (the user, 2026-10-13); in the
+     earth's green while no trick has come in, like the filled pips of a bid that's met. */
+  .bid .nil {
+    width: 12px;
+    height: 2px;
+    border-radius: 1px;
+    background: rgb(28 26 34 / 0.55);
+  }
+  .bid.met .nil {
+    background: var(--earth);
   }
   .bid.over .count {
     color: var(--fire);
