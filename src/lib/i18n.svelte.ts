@@ -98,7 +98,6 @@ const STRINGS = {
     guide9Title: 'Erfolge und Tische',
     guide9Text: 'Zwölf Erfolge warten in deiner Sammlung. Sie schalten neue Tische, Rückseiten und den Goldschnitt frei, nur auf deinem Gerät.',
     guideTrump: 'Trumpf',
-    guideTricks: 'Stiche',
     guideBid: 'Ansage',
     guideTook: 'gemacht',
     rulesDeck:
@@ -396,7 +395,6 @@ const STRINGS = {
     guide9Title: 'Achievements and tables',
     guide9Text: 'Twelve achievements wait in your collection. They unlock new tables, card backs and gilded edges, on your device only.',
     guideTrump: 'Trump',
-    guideTricks: 'tricks',
     guideBid: 'Bid',
     guideTook: 'taken',
     rulesDeck:

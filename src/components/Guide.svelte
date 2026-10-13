@@ -65,7 +65,7 @@
     <section class="page">
       <div class="art dial sheet" aria-hidden="true">
         <span class="step">−</span>
-        <span class="value"><b class="display">2</b><small>{t('guideTricks')}</small></span>
+        <span class="value"><b class="display">2</b></span>
         <span class="step">+</span>
       </div>
       <h2 class="display">{t('guide4Title')}</h2>
@@ -134,7 +134,9 @@
     --ewo-guide-fg-2: var(--on-cloth-2);
     --ewo-guide-accent: var(--paper);
     --ewo-guide-accent-ink: var(--ink);
-    --ewo-guide-dot: rgb(236 230 214 / 0.28);
+    /* One size for every dot, so colour alone marks the page: the paper at half strength is 4:1 on
+       the wood and 3:1 under the gold. */
+    --ewo-guide-dot: rgb(236 230 214 / 0.5);
     --ewo-guide-dot-on: var(--gold-hi);
   }
   ewo-guide::part(next) {
@@ -244,13 +246,10 @@
     align-items: center;
     color: var(--ink);
   }
+  /* The number alone, as in the bid itself (Table.svelte), with room for the face's old-style digits. */
   .dial b {
     font-size: 76px;
-    line-height: 0.95;
-  }
-  .dial small {
-    font-size: 13px;
-    color: var(--mute);
+    line-height: 1.34;
   }
   .pad {
     display: flex;

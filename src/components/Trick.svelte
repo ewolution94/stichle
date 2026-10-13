@@ -45,6 +45,9 @@
   $effect(() => {
     const local = Date.now();
     const offset = room.offset;
+    // A new reading of the server's clock comes with a fresh clock here too (Table.svelte: a stale one
+    // kept a finished trick on the table).
+    now = local;
     const marks = [holdUntil - TRICK_REVEAL, holdUntil - TRICK_GATHER, holdUntil, holdUntil + TRICK_SWEEP].map((at) => at - offset - local);
     marks.push(flight.until - local);
     const timers = marks.filter((ms) => ms > 0 && ms < 15_000).map((ms) => setTimeout(() => (now = Date.now()), ms + 20));

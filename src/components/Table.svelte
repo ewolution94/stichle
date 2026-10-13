@@ -40,11 +40,22 @@
   let now = $state(Date.now());
   $effect(() => {
     const wait = room.left(game.holdUntil);
+    // Every view brings a new reading of the server's clock (room.offset), and it swings with the
+    // network's delay; the clock here is read afresh with it. A clock from the last timer plus a slower
+    // view made the pause look unfinished after its end, with no timer left to end it: your turn came
+    // and the hand never played (the user, 2026-10-13: "the game locks up"; tools/jitter.mjs).
+    now = Date.now();
     if (wait <= 0) return;
     const timers = [wait - TRICK_REVEAL, wait].filter((ms) => ms > 0).map((ms) => setTimeout(() => (now = Date.now()), ms + 30));
     return () => timers.forEach(clearTimeout);
   });
   const holding = $derived(room.left(game.holdUntil, now) > 0);
+  // And while the pause lasts the clock ticks on its own, so the pause can never outlive itself.
+  $effect(() => {
+    if (!holding) return;
+    const tick = setInterval(() => (now = Date.now()), 400);
+    return () => clearInterval(tick);
+  });
   const revealed = $derived(trickPhase(room.left(game.holdUntil, now)) !== 'rest');
   const canPlay = $derived(myTurn && game.stage === 'play' && !holding);
 
