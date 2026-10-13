@@ -1,25 +1,22 @@
 <!--
   One seat at the table: the player's seal and name, what they bid and how many tricks they have
   (pips that fill, gold when the bid is met, red once it's overshot), their score, and whose move
-  it is (a gold ring, with the clock when there is one). The dealer carries a small deck; whoever
-  plays the round's first card carries a gold tag until it's played.
+  it is (a gold ring; the move's clock runs in the bar over the table, Clock.svelte). The dealer
+  carries a small deck; whoever plays the round's first card carries a gold tag until it's played.
 -->
 <script lang="ts">
   import type { Game, Player } from '../lib/api';
   import { score, t } from '../lib/i18n.svelte';
-  import type { Room } from '../lib/room.svelte';
   import { opener } from '../lib/table';
   import Avatar from './Avatar.svelte';
-  import Clock from './Clock.svelte';
 
   let {
-    room,
     game,
     seat,
     player,
     me = false,
     compact = false,
-  }: { room: Room; game: Game; seat: number; player: Player | undefined; me?: boolean; compact?: boolean } = $props();
+  }: { game: Game; seat: number; player: Player | undefined; me?: boolean; compact?: boolean } = $props();
 
   const bidValue = $derived(game.bids[seat]);
   const won = $derived(game.won[seat] ?? 0);
@@ -57,7 +54,6 @@
     </span>
   </div>
   {#if opens}<span class="opens-tag"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2.5 9 6 3 9.5Z" /></svg>{t('opensTag')}</span>{/if}
-  {#if active && game.endsAt}<span class="clock"><Clock {room} endsAt={game.endsAt} tick={me} /></span>{/if}
 </div>
 
 <style>
@@ -225,25 +221,6 @@
   .total {
     font: 700 14px/1 var(--display);
     font-variant-numeric: tabular-nums;
-  }
-  .clock {
-    position: absolute;
-    z-index: 2;
-    top: -10px;
-    right: -6px;
-  }
-  .compact .clock {
-    top: auto;
-    bottom: -10px;
-    right: 50%;
-    translate: 50% 0;
-  }
-  /* The clock makes room for the tag. */
-  .compact.opens .clock {
-    top: -10px;
-    bottom: auto;
-    right: -6px;
-    translate: none;
   }
   /* Whoever leads the round's first card: a gold tag hanging from the place card's lower edge. */
   .opens-tag {

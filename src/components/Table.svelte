@@ -14,6 +14,7 @@
   import { actAt } from '../lib/waits';
   import { askTilt } from '../lib/tilt';
   import Card from './Card.svelte';
+  import Clock from './Clock.svelte';
   import Hand from './Hand.svelte';
   import Inspect from './Inspect.svelte';
   import RoundEnd from './RoundEnd.svelte';
@@ -194,6 +195,7 @@
       </span>
     </button>
     <div class="tools">
+      {#if game.endsAt && game.phase === 'round'}<Clock {room} endsAt={game.endsAt} seconds={game.moveSeconds} mine={myTurn} />{/if}
       <button class="tool" type="button" onclick={() => (padOpen = true)} aria-label={t('scorePad')}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="1.5" /><path d="M8.5 8h7M8.5 12h7M8.5 16h4" /></svg>
       </button>
@@ -206,7 +208,7 @@
   <div class="seats" style:--count={others.length}>
     {#each others as seat, i (seat)}
       <div class="far" style:--lift="{Math.round((1 - Math.sin(((i + 1) / (others.length + 1)) * Math.PI)) * 14)}px">
-        <SeatChip {room} {game} {seat} player={playerAt(seat)} compact />
+        <SeatChip {game} {seat} player={playerAt(seat)} compact />
         <span class="held" aria-label={t('cardsLeft', { n: game.counts[seat] })}>
           {#each { length: Math.min(game.counts[seat], 7) } as _, k (k)}<i style:--k={k - (Math.min(game.counts[seat], 7) - 1) / 2}></i>{/each}
         </span>
@@ -267,7 +269,7 @@
     {/if}
 
     <div class="mine">
-      {#if mine >= 0 || n > 0}<SeatChip {room} {game} seat={home} player={playerAt(home)} me={mine >= 0} />{/if}
+      {#if mine >= 0 || n > 0}<SeatChip {game} seat={home} player={playerAt(home)} me={mine >= 0} />{/if}
     </div>
 
     {#if mine >= 0 && game.hand}
@@ -311,6 +313,7 @@
   }
 
   .top {
+    position: relative;
     flex: none;
     display: flex;
     align-items: center;

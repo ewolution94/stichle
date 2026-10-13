@@ -479,6 +479,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       ready: g.ready,
       readyBy: g.phase === 'scored' ? g.readyBy : null,
       endsAt: g.endsAt,
+      /** A move's length on the clock, for the bar that drains over the table (0: no clock). */
+      moveSeconds: MOVE_SECONDS[r.settings.clock] ?? 0,
       startedAt: g.startedAt,
       endedAt: g.endedAt,
       ended: g.ended,

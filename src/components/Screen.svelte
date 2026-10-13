@@ -16,6 +16,7 @@
   import Logo from './Logo.svelte';
   import Qr from './Qr.svelte';
   import ScoreTable from './ScoreTable.svelte';
+  import Clock from './Clock.svelte';
   import SeatChip from './SeatChip.svelte';
   import Trick from './Trick.svelte';
 
@@ -84,6 +85,7 @@
         <span><span class="label on-cloth">{t('trump')}</span><b class="display">{#if game.trump}<span class="suit {game.trump}"></span>{suitName(game.trump)}{:else}{t('noTrumpShort')}{/if}</b></span>
       </span>
       {#if status}<p class="status">{status}</p>{/if}
+      {#if game.endsAt && game.phase === 'round'}<span class="clock"><Clock {room} endsAt={game.endsAt} seconds={game.moveSeconds} /></span>{/if}
     {/if}
   </header>
 
@@ -130,7 +132,7 @@
         {#each game.seats as _, seat (seat)}
           {@const at = place(seat, game.seats.length)}
           <div class="seat" style:left="{at.x}%" style:top="{at.y}%">
-            <SeatChip {room} {game} {seat} player={playerAt(seat)} compact />
+            <SeatChip {game} {seat} player={playerAt(seat)} compact />
           </div>
         {/each}
       </div>
@@ -159,9 +161,17 @@
     --ewo-connection-fg: var(--ink);
   }
   .top {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 2.4vw;
+  }
+  /* The move's clock at the bar's far end; its rule drains along the bar's foot. */
+  .top .clock {
+    margin-left: auto;
+  }
+  .top .clock :global(.clock) {
+    font-size: 26px;
   }
   .top :global(.logo) {
     font-size: 34px;

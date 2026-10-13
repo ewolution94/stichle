@@ -14,6 +14,8 @@ const OUT = process.argv[3] ?? '/tmp/stichle-qa/';
 const ROUNDS = Number(process.env.ROUNDS ?? 3);
 /** The house rule for bids: open, uneven or secret. */
 const BIDDING = process.env.BIDDING ?? 'open';
+/** The clock per move: off, relaxed or quick. */
+const CLOCK = process.env.CLOCK ?? 'off';
 const W = Number(process.env.W ?? 390), H = Number(process.env.H ?? 844);
 mkdirSync(OUT, { recursive: true });
 
@@ -118,7 +120,7 @@ if (process.env.SCREEN) {
   screen = { name: 'screen', context, page };
 }
 await api(host.page, `/api/rooms/${seat.code}/bot`, { add: true }, seat.token);
-await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING }, seat.token);
+await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING, clock: CLOCK }, seat.token);
 await snap(host, 'lobby');
 await snap(guest, 'lobby');
 await host.page.getByRole('button', { name: 'Karten geben' }).click();

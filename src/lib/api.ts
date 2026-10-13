@@ -92,6 +92,8 @@ export interface Game {
   ready: string[];
   readyBy: number | null;
   endsAt: number | null;
+  /** A move's length on the clock in seconds; 0 without a clock. */
+  moveSeconds: number;
   startedAt: number;
   endedAt: number | null;
   ended: Ended | null;
