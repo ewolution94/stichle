@@ -2,7 +2,7 @@
   The table during a game, filling the screen like a real one seen from your chair: the round and
   trump along the top, the other seats across the far side (in the order play goes: your left, the
   top, your right), the trick in the middle, and your seat and hand at the bottom. What it's your
-  turn to do opens just above your hand: the trump suit (when a Wizard was turned and you dealt),
+  turn to do floats over the table just above your hand: the trump suit (when a Wizard was turned and you dealt),
   your bid, or nothing, because playing is done with the cards themselves (Hand.svelte).
 -->
 <script lang="ts">
@@ -10,7 +10,7 @@
   import { fromId, SUITS, type Suit } from '../lib/deck';
   import { errorText, t, suitName } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { angleOf, opener, slotOffset, trickCardWidth, twist } from '../lib/table';
+  import { angleOf, slotOffset, trickCardWidth, trickPhase, twist, TRICK_REVEAL } from '../lib/table';
   import { actAt } from '../lib/waits';
   import { askTilt } from '../lib/tilt';
   import Card from './Card.svelte';
@@ -35,15 +35,17 @@
   const myTurn = $derived(mine >= 0 && game.phase === 'round' && game.stage !== 'done' && game.waiting.includes(mine));
   const secret = $derived(game.bidding === 'secret');
 
-  // A finished trick holds the table for a moment: no card until it's cleared.
+  // A finished trick holds the table for a moment: no card until it's cleared. The page wakes when its
+  // winner shows (the status names them then, not before) and when the hold is over.
   let now = $state(Date.now());
   $effect(() => {
     const wait = room.left(game.holdUntil);
     if (wait <= 0) return;
-    const timer = setTimeout(() => (now = Date.now()), wait + 30);
-    return () => clearTimeout(timer);
+    const timers = [wait - TRICK_REVEAL, wait].filter((ms) => ms > 0).map((ms) => setTimeout(() => (now = Date.now()), ms + 30));
+    return () => timers.forEach(clearTimeout);
   });
   const holding = $derived(room.left(game.holdUntil, now) > 0);
+  const revealed = $derived(trickPhase(room.left(game.holdUntil, now)) !== 'rest');
   const canPlay = $derived(myTurn && game.stage === 'play' && !holding);
 
   // The suit to follow, for the hint (the same rule as the server's: the first card that isn't a Jester).
@@ -119,6 +121,8 @@
     sent = key;
   }
   const deciding = $derived(myTurn && sent !== moveKey);
+  /** Your trump pick or your bid is open: it floats over the table and says what's asked. */
+  const panelOpen = $derived(deciding && (game.stage === 'trump' || game.stage === 'bid'));
 
   function refused(card: string) {
     if (!myTurn) return say(t('notYourTurn'));
@@ -144,6 +148,8 @@
     }
     if (game.stage === 'play') {
       if (holding && game.lastTrick) {
+        // The table rests a moment after the last card; the winner is named once it shows.
+        if (!revealed) return '';
         const w = game.lastTrick.winner;
         return w === mine ? t('trickYou') : t('trickOther', { name: playerAt(w)?.name ?? '' });
       }
@@ -153,8 +159,6 @@
     return '';
   });
 
-  /** Who plays the round's first card, said in the empty middle until it's played. */
-  const opens = $derived(opener(game));
 </script>
 
 <div class="table" class:my-turn={myTurn}>
@@ -201,19 +205,13 @@
 
   <div class="middle" bind:this={trickEl}>
     <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} {mine} {n} bind:width={trickW} bind:height={trickH} />
-    {#if opens >= 0 && !holding}
-      <p class="opens" aria-live="polite">
-        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2.5 9 6 3 9.5Z" /></svg>
-        {opens === mine ? t('opensYou') : t('opensOther', { name: playerAt(opens)?.name ?? '' })}
-      </p>
-    {/if}
   </div>
   </div>
 
   <div class="dock">
     {#if error}
       <p class="toast" role="alert">{error}</p>
-    {:else if status}
+    {:else if status && !panelOpen}
       <p class="status" class:mine={myTurn} aria-live="polite">{status}</p>
     {/if}
 
@@ -457,39 +455,10 @@
     flex: 1 1 auto;
     min-height: 0;
   }
-  /* The round's first card, before it's played: who leads, where the pile will be. */
-  .opens {
-    position: absolute;
-    inset: 50% auto auto 50%;
-    translate: -50% -50%;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0;
-    padding: 7px 14px 7px 11px;
-    border-radius: 999px;
-    background: rgb(18 11 7 / 0.66);
-    color: var(--gold-hi);
-    font: 700 15px/1.2 var(--display);
-    white-space: nowrap;
-    box-shadow: 0 0 0 1px rgb(201 162 74 / 0.45);
-    pointer-events: none;
-    animation: opens-in 0.4s ease-out backwards;
-  }
-  .opens svg {
-    width: 10px;
-    height: 10px;
-    fill: currentColor;
-  }
-  @keyframes opens-in {
-    from {
-      opacity: 0;
-      translate: -50% -30%;
-    }
-  }
 
   .dock {
     position: relative;
+    z-index: 5;
     flex: none;
     display: flex;
     flex-direction: column;
@@ -515,14 +484,24 @@
   .toast {
     color: #ffc9bd;
   }
+  /* Your trump pick or bid floats over the table, just above your place card: the table keeps its
+     size underneath (the user, 2026-10-13), and the felt's middle is empty while it's open. */
   .panel {
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px);
     display: flex;
     flex-direction: column;
     gap: 10px;
-    align-self: center;
     width: 100%;
     max-width: 440px;
+    margin-inline: auto;
     padding: 14px 14px 14px;
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.35),
+      0 24px 40px -18px rgb(0 0 0 / 0.85);
     animation: rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
   }
   @keyframes rise {

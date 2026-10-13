@@ -40,7 +40,8 @@
     <span class="name">{me ? t('you') : (player?.name ?? '?')}</span>
     <span class="line">
       {#if bidValue === null}
-        {#if active && game.stage === 'bid'}<span class="bid wait">{t('bidding')}</span>
+        <!-- Your own bid is asked in its panel above your seat: no "bidding …" here as well. -->
+        {#if active && game.stage === 'bid' && !me}<span class="bid wait">{t('bidding')}</span>
         {:else if game.bidIn[seat]}<span class="bid wait done" aria-label={t('bidDone')}>✓ {t('bidHidden')}</span>{/if}
       {:else}
         <span class="bid" class:met class:over aria-label={t('bidWon', { bid: bidValue, won })}>

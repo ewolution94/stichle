@@ -52,8 +52,13 @@ export const LIMITS = {
   roomsPer10Min: 40,
 };
 
-/** How long a finished trick stays in the middle before the next card may come. */
-export const TRICK_PAUSE = 1600;
+/**
+ * How long a finished trick stays in the middle before the next card may come: it rests, its winner
+ * shows, the cards gather (src/lib/table.ts → trickPhase), then it sweeps off for AFTER_SWEEP more.
+ */
+export const TRICK_PAUSE = 2600;
+/** A bot or the stand-in waits this long past the pause, so the sweep is over before it leads. */
+const AFTER_SWEEP = 600;
 /** The round's result waits this long for everyone's "next", then the next round deals anyway. */
 export const ROUND_WAIT = 25_000;
 /** A seated player who's gone (closed the page) for this long on their move: the bot moves for them. */
@@ -402,11 +407,11 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       const p = r.players.get(g.seats[seat]);
       const only = s.phase === 'bid' ? seat : null;
       if (!p || p.bot) {
-        const wait = Math.max(think(), g.holdUntil - clock.now() + 250);
+        const wait = Math.max(think(), g.holdUntil - clock.now() + AFTER_SWEEP);
         later(r, wait, () => still() && autoMove(r, only));
       } else if (p.left || p.online === 0) {
         const gone = p.left ? 0 : AWAY_MS - Math.min(AWAY_MS, clock.now() - (p.offlineSince ?? clock.now()));
-        later(r, Math.max(gone, think(), g.holdUntil - clock.now() + 250), () => still() && (p.left || p.online === 0) && autoMove(r, only));
+        later(r, Math.max(gone, think(), g.holdUntil - clock.now() + AFTER_SWEEP), () => still() && (p.left || p.online === 0) && autoMove(r, only));
       }
     }
   }
