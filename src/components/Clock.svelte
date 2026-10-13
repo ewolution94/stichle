@@ -35,6 +35,8 @@
   {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
 </span>
 <span class="drain" class:urgent style:--share={share} aria-hidden="true"></span>
+<!-- The readout itself is silent (a timer); a screen reader hears once that your last ten seconds began. -->
+<span class="sr-only" aria-live="polite">{mine && urgent && left > 0 ? t('clockHurry') : ''}</span>
 
 <style>
   .clock {
