@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { schedule, LENGTHS } from '../server/rules.mjs';
 // The page's own module, loaded through Node's type stripping (no build step).
-import { BEATS, FLAT, flatLayout, orderHand, scheduleFor, trickPhase } from '../src/lib/table.ts';
+import { BEATS, deskScale, FLAT, flatLayout, orderHand, scheduleFor, trickPhase } from '../src/lib/table.ts';
 
 test("the page's schedule is the server's, for every table and length", () => {
   for (const players of [3, 4, 5, 6]) for (const length of LENGTHS) for (const specials of [false, true]) assert.deepEqual(scheduleFor(players, length, specials), schedule(players, length, specials), `${players} ${length} ${specials}`);
@@ -40,4 +40,28 @@ test('the flat hand: whole cards side by side while they fit, then an even overl
   // The playable ones stand higher.
   const raised = flatLayout(['a', 'b'], 1000, { raise: new Set(['b']) });
   assert.equal(raised.places.get('a').y - raised.places.get('b').y, FLAT.raise);
+  // At a bigger table every measure grows with it, the box too.
+  const big = flatLayout(['a', 'b', 'c'], 2000, { scale: 1.5 });
+  assert.equal(big.cw, FLAT.max * 1.5);
+  assert.equal(big.height, Math.round((FLAT.top + FLAT.max * 1.4 + FLAT.bottom) * 1.5));
+  assert.equal(big.lift, 30);
+});
+
+test("the desktop table's size: a laptop as it is, a big window bigger, never past the window", () => {
+  assert.equal(deskScale(1440, 820), 1);
+  assert.equal(deskScale(1512, 900), 1);
+  // The user's 34" ultrawide, a browser window on it.
+  assert.equal(deskScale(3440, 1320), 1.47);
+  assert.equal(deskScale(2560, 1300), 1.44);
+  assert.equal(deskScale(1920, 970), 1.08);
+  // Tall but narrow: the width holds it back.
+  assert.equal(deskScale(1500, 1400), 1);
+  // Never past 1.6, even on a huge window.
+  assert.equal(deskScale(5120, 2700), 1.6);
+  // A fixed size holds…
+  assert.equal(deskScale(3440, 1320, '1'), 1);
+  assert.equal(deskScale(3440, 1320, '1.25'), 1.25);
+  assert.equal(deskScale(1920, 1200, '1.5'), 1.5);
+  // …unless the window can't hold it: the table needs 1100 × 740 at its own size.
+  assert.equal(deskScale(1440, 820, '1.5'), 1.11);
 });

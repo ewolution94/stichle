@@ -11,7 +11,8 @@
   import { ApiError } from '../lib/api';
   import { errorText, i18n, setLanguage, systemLang, t, type LangChoice } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { prefs, setArt, setHand, type HandLayout } from '../lib/prefs.svelte';
+  import { prefs, setArt, setHand, setSize, type HandLayout } from '../lib/prefs.svelte';
+  import type { TableSize } from '../lib/table';
   import type { Art } from '../lib/deck';
   import { play, setSound, sound } from '../lib/sound.svelte';
   import { earnedCount, profile } from '../lib/profile.svelte';
@@ -163,6 +164,17 @@
           <ewo-segmented stretch value={prefs.hand} label={t('handLayout')} onchange={(e) => setHand(e.detail.value as HandLayout)}>
             <option value="flat">{t('hand_flat')}</option>
             <option value="fan">{t('hand_fan')}</option>
+          </ewo-segmented>
+        </div>
+        <!-- How big the desktop table is drawn (the user, 2026-10-14, on a 34" ultrawide): Auto grows it
+             with the window; the others hold one size (as far as the window holds it). -->
+        <div class="row">
+          <span class="name">{t('tableSize')}</span>
+          <ewo-segmented stretch value={prefs.size} label={t('tableSize')} onchange={(e) => setSize(e.detail.value as TableSize)}>
+            <option value="auto">{t('size_auto')}</option>
+            <option value="1">100 %</option>
+            <option value="1.25">125 %</option>
+            <option value="1.5">150 %</option>
           </ewo-segmented>
         </div>
       {/if}

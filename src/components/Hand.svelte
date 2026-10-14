@@ -7,7 +7,8 @@
 
   On the desktop table (Table.svelte, `.desk`) the hand can lie flat instead (`flat`): side by side, every
   card whole, the ones you may play standing a little higher (src/lib/table.ts → flatLayout); with
-  `keys`, 1 to 9 and 0 play the first ten cards, ← and → move through the hand, Enter plays.
+  `keys`, 1 to 9 and 0 play the first ten cards, ← and → move through the hand, Enter plays. `scale`
+  is that table's size (deskScale): the cards, the box and the keys grow with it.
 -->
 <script lang="ts">
   import { nameOf, fromId } from '../lib/deck';
@@ -30,6 +31,7 @@
     onrefuse,
     flat = false,
     keys = false,
+    scale = 1,
   }: {
     cards: string[];
     /** What may be played now; empty when it's not your move. */
@@ -46,6 +48,8 @@
     flat?: boolean;
     /** The keyboard plays cards: 1–9 and 0, the arrows and Enter (the desktop table). */
     keys?: boolean;
+    /** How big the desktop table is drawn (1 on the phone). */
+    scale?: number;
   } = $props();
 
   const FLY_MS = 380;
@@ -95,7 +99,7 @@
   // The fan from Folio's card kit (card-fan.js): few cards are held bigger, a full hand shrinks to
   // fit (never below 62 px) and goes to two rows; a laptop's wider table lets them grow a little.
   const fan = $derived(cards.filter((c) => c !== air?.card));
-  const sizes = $derived<[number, number, number]>(width > 600 ? [124, 112, 100] : [104, 92, 84]);
+  const sizes = $derived<[number, number, number]>(width > 600 ? [124 * scale, 112 * scale, 100 * scale] : [104, 92, 84]);
   // The hand's box keeps one height all game: the tallest any hand gets at this width (a few cards,
   // held big), with the cards at its foot. A card leaving the hand changes their size, never the box,
   // so the table above never moves (the user, 2026-10-13: "it cannot jump").
@@ -105,7 +109,7 @@
   const natural = $derived(fanLayout(fan, { width, count: cards.length, sizes }));
   // Flat, the cards you may play now stand a little higher; the box keeps one height there too.
   const raise = $derived(flat && canPlay ? new Set(legal) : new Set<string>());
-  const layout = $derived(flat ? flatLayout(fan, width, { raise }) : fanLayout(fan, { width, count: cards.length, sizes, top: 22 + room - natural.height }));
+  const layout = $derived(flat ? flatLayout(fan, width, { raise, scale }) : fanLayout(fan, { width, count: cards.length, sizes, top: 22 + room - natural.height }));
   const cw = $derived(layout.cw);
   const ch = $derived(layout.ch);
   const height = $derived(layout.height);
@@ -210,6 +214,7 @@
   bind:this={box}
   bind:clientWidth={width}
   style:height="{height}px"
+  style:--scale={scale}
   role="group"
   data-press="own"
   aria-label={i18n.lang === 'de' ? 'Deine Karten' : 'Your cards'}
@@ -239,7 +244,7 @@
     <!-- The keys under the first ten cards; gold under the ones you may play now. -->
     {#each fan.slice(0, 10) as card, i (card)}
       {@const p = places.get(card)}
-      {#if p}<span class="key" class:on={canPlay && legal.includes(card)} style:left="{p.x + cw / 2}px" style:top="{height - 24}px" aria-hidden="true">{(i + 1) % 10}</span>{/if}
+      {#if p}<span class="key" class:on={canPlay && legal.includes(card)} style:left="{p.x + cw / 2}px" style:top="{height - 24 * scale}px" aria-hidden="true">{(i + 1) % 10}</span>{/if}
     {/each}
   {/if}
 </div>
@@ -289,10 +294,10 @@
   .key {
     position: absolute;
     translate: -50% 0;
-    min-width: 12px;
-    padding: 3px 6px;
-    border-radius: 4px;
-    font: 600 12px/1 var(--ewo-mono);
+    min-width: calc(12px * var(--scale, 1));
+    padding: calc(3px * var(--scale, 1)) calc(6px * var(--scale, 1));
+    border-radius: calc(4px * var(--scale, 1));
+    font: 600 calc(12px * var(--scale, 1)) / 1 var(--ewo-mono);
     text-align: center;
     color: var(--on-cloth-2);
     opacity: 0.6;

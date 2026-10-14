@@ -99,29 +99,50 @@ export function orderHand(cards: string[], trump: string | null, mode: 'suit' | 
     .map((e) => e.id);
 }
 
-/** The flat hand's measures (the desktop table, 2026-10-14). */
-export const FLAT = { max: 132, min: 76, gap: 14, top: 34, bottom: 34, raise: 16 };
+/** The flat hand's measures (the desktop table, 2026-10-14), at the table's own size. */
+export const FLAT = { max: 132, min: 76, gap: 14, top: 34, bottom: 34, raise: 16, lift: 20 };
 
 /**
  * The hand laid out flat (the desktop table's default): side by side, every card whole and upright,
  * as big as the width allows (up to FLAT.max); when even FLAT.min doesn't fit, they overlap evenly.
  * The cards you may play now (`raise`) stand a little higher. Same shape as the kit's fanLayout, so
  * its gestures (tap, drag, flick, hold) and flights work unchanged. `boxH` keeps the box one height
- * whatever the hand: the cards sit at its foot, the number keys under them.
+ * whatever the hand: the cards sit at its foot, the number keys under them. `scale` is the table's
+ * size (deskScale): every measure grows with it.
  */
-export function flatLayout(cards: string[], width: number, { raise = new Set<string>(), boxH = FLAT.top + Math.round(FLAT.max * 1.4) + FLAT.bottom } = {}) {
+export function flatLayout(cards: string[], width: number, { raise = new Set<string>(), scale = 1, boxH = 0 } = {}) {
+  const m = Object.fromEntries(Object.entries(FLAT).map(([k, v]) => [k, v * scale])) as typeof FLAT;
+  const height = boxH || Math.round(m.top + m.max * 1.4 + m.bottom);
   const n = cards.length;
   const usable = Math.max(0, width - 8);
-  let cw = n ? Math.min(FLAT.max, Math.floor((usable - FLAT.gap * (n - 1)) / n)) : FLAT.max;
-  let step = cw + FLAT.gap;
-  if (cw < FLAT.min) {
-    cw = FLAT.min;
+  let cw = n ? Math.min(m.max, Math.floor((usable - m.gap * (n - 1)) / n)) : m.max;
+  let step = cw + m.gap;
+  if (cw < m.min) {
+    cw = Math.round(m.min);
     step = n > 1 ? (usable - cw) / (n - 1) : 0;
   }
+  cw = Math.floor(cw);
   const ch = Math.round(cw * 1.4);
   const x0 = (width - (cw + step * (n - 1))) / 2;
-  const foot = boxH - FLAT.bottom - ch;
+  const foot = height - m.bottom - ch;
   const places = new Map<string, { x: number; y: number; r: number; z: number; row: number }>();
-  cards.forEach((card, i) => places.set(card, { x: x0 + i * step, y: foot - (raise.has(card) ? FLAT.raise : 0), r: 0, z: i + 1, row: 0 }));
-  return { cw, ch, rows: 1 as const, height: boxH, lift: 20, places };
+  cards.forEach((card, i) => places.set(card, { x: x0 + i * step, y: foot - (raise.has(card) ? m.raise : 0), r: 0, z: i + 1, row: 0 }));
+  return { cw, ch, rows: 1 as const, height, lift: Math.round(m.lift), places };
+}
+
+/** The desktop table's size setting: Auto follows the window; the others hold one size. */
+export type TableSize = 'auto' | '1' | '1.25' | '1.5';
+export const TABLE_SIZES: TableSize[] = ['auto', '1', '1.25', '1.5'];
+
+/**
+ * How big the desktop table is drawn (the user, 2026-10-14, on a 34" ultrawide: the place cards were
+ * hard to read). It is laid out for a window about 1500 × 900; Auto draws a bigger window's table
+ * bigger by the same factor, up to 1.6×, so a big screen gets a big table instead of empty wood at
+ * its sides, and a laptop keeps it as it is. A fixed size holds whatever the window does, but never
+ * more than the window holds: the table needs 1100 × 740 at its own size.
+ */
+export function deskScale(width: number, height: number, size: TableSize = 'auto') {
+  const want = size === 'auto' ? Math.min(height / 900, width / 1500, 1.6) : Number(size);
+  const fits = Math.min(width / 1100, height / 740);
+  return Math.round(Math.max(1, Math.min(want, fits)) * 100) / 100;
 }

@@ -349,6 +349,8 @@ const STRINGS = {
     handLayout: 'Hand am Computer',
     hand_flat: 'Ausgelegt',
     hand_fan: 'Gefächert',
+    tableSize: 'Tischgröße',
+    size_auto: 'Auto',
 
     wait_create: 'Tisch wird gedeckt …',
     wait_join: 'Setze dich …',
@@ -690,6 +692,8 @@ const STRINGS = {
     handLayout: 'Hand on a computer',
     hand_flat: 'Laid out',
     hand_fan: 'Fanned',
+    tableSize: 'Table size',
+    size_auto: 'Auto',
 
     wait_create: 'Setting the table …',
     wait_join: 'Sitting down …',

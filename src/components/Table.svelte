@@ -10,7 +10,7 @@
   import { fromId, nameOf, SUITS, type Suit } from '../lib/deck';
   import { errorText, i18n, t, suitName } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { angleOf, BEATS, orderHand, slotOffset, trickCardWidth, trickPhase, twist } from '../lib/table';
+  import { angleOf, BEATS, deskScale, orderHand, slotOffset, trickCardWidth, trickPhase, twist } from '../lib/table';
   import { prefs } from '../lib/prefs.svelte';
   import { actAt } from '../lib/waits';
   import { askTilt } from '../lib/tilt';
@@ -106,8 +106,18 @@
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
   });
+  // How big it's drawn (src/lib/table.ts → deskScale; Settings → Table size): one factor for all of
+  // it. The plates, coins, piles, bar and panels take it as CSS zoom (`--scale`); the hand and the trick,
+  // whose cards fly by measured positions, take it in their own layout instead.
+  let win = $state({ w: typeof innerWidth === 'number' ? innerWidth : 1440, h: typeof innerHeight === 'number' ? innerHeight : 900 });
+  $effect(() => {
+    const on = () => (win = { w: innerWidth, h: innerHeight });
+    addEventListener('resize', on);
+    return () => removeEventListener('resize', on);
+  });
+  const scale = $derived(desk ? deskScale(win.w, win.h, prefs.size) : 1);
   /** The largest a card on the desktop table's pile may be. */
-  const DESK_CAP = 150;
+  const DESK_CAP = $derived(150 * scale);
   /** The house rules this game plays with, for the desktop table's bar (only what isn't the original). */
   const rules = $derived(
     [
@@ -259,7 +269,7 @@
   {/if}
 {/snippet}
 
-{#snippet hand(flat: boolean, keys: boolean)}
+{#snippet hand(flat: boolean, keys: boolean, size: number)}
   {#if mine >= 0 && game.hand}
     <Hand
       cards={orderHand(game.hand, game.trump, prefs.sort)}
@@ -271,6 +281,7 @@
       onrefuse={refused}
       {flat}
       {keys}
+      scale={size}
     />
   {:else}
     <p class="watching">{t('watchingGame')}</p>
@@ -278,7 +289,7 @@
 {/snippet}
 
 {#if desk}
-<div class="desk" class:my-turn={myTurn}>
+<div class="desk" class:my-turn={myTurn} style:--scale={scale}>
   <header class="desk-bar">
     <span class="desk-round"><span class="label on-cloth">{t('round')}</span><b class="display">{game.no}<small>/{game.rounds}</small></b></span>
     {#if rules.length}<span class="desk-rules">{rules.join(' · ')}</span>{/if}
@@ -350,9 +361,12 @@
       </div>
 
       <div class="desk-hand">
-        {@render notice()}
-        {@render panels()}
-        {@render hand(prefs.hand === 'flat', true)}
+        <!-- The status line and your bid or trump pick float over the hand, drawn at the table's size. -->
+        <div class="desk-float">
+          {@render notice()}
+          {@render panels()}
+        </div>
+        {@render hand(prefs.hand === 'flat', true, scale)}
       </div>
     </div>
   </div>
@@ -425,7 +439,7 @@
       {#if mine >= 0 && game.hand && game.hand.length > 1}<span class="sorter"><SortToggle /></span>{/if}
     </div>
 
-    {@render hand(false, false)}
+    {@render hand(false, false, 1)}
   </div>
 
   {#if game.phase === 'scored'}
@@ -827,21 +841,35 @@
   /* ---------- The desktop table (the user's pick C, 2026-10-14) ----------
      Its own class names, so nothing here reaches the phone's table above. The cloth keeps its edge
      (app.css → .felt: each table's rail, studs or border), the room round it; a grid inside it keeps
-     every row one height, so nothing moves while you play. */
+     every row one height, so nothing moves while you play.
+     Its size is --scale (Table size in Settings; Auto grows it with the window): the measures here
+     are multiplied by it, and the parts that lie on the cloth take it as zoom. Nothing with a
+     viewport unit is zoomed (zoom would scale the vw as well). */
   .desk {
+    --scale: 1;
     position: fixed;
     inset: 0;
     display: grid;
-    grid-template-rows: 62px minmax(0, 1fr);
+    grid-template-rows: calc(62px * var(--scale)) minmax(0, 1fr);
     color: var(--on-cloth);
   }
   .desk-bar {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 24px;
-    padding: 0 max(44px, calc((100vw - 1640px) / 2));
+    gap: calc(24px * var(--scale));
+    padding: 0 max(calc(44px * var(--scale)), calc((100vw - 1640px * var(--scale)) / 2));
     border-bottom: 1px solid rgb(236 230 214 / 0.12);
+  }
+  .desk-round,
+  .desk-rules,
+  .desk-bar .tools,
+  .desk-seat,
+  .desk-deck,
+  .desk-side,
+  .desk-me,
+  .desk-float {
+    zoom: var(--scale);
   }
   .desk-round {
     display: flex;
@@ -864,15 +892,15 @@
   .desk-room {
     min-height: 0;
     display: flex;
-    padding: 32px max(48px, calc((100vw - 1640px) / 2)) 30px;
+    padding: calc(32px * var(--scale)) max(calc(48px * var(--scale)), calc((100vw - 1640px * var(--scale)) / 2)) calc(30px * var(--scale));
   }
   .desk-cloth {
     flex: 1;
     min-width: 0;
     display: grid;
-    grid-template-columns: 230px minmax(0, 1fr) 230px;
+    grid-template-columns: calc(230px * var(--scale)) minmax(0, 1fr) calc(230px * var(--scale));
     grid-template-rows: auto minmax(0, 1fr) auto;
-    padding: 26px 26px 6px;
+    padding: calc(26px * var(--scale)) calc(26px * var(--scale)) calc(6px * var(--scale));
   }
   /* The others across the far side. */
   .desk-seats {
@@ -1067,5 +1095,14 @@
     grid-row: 3;
     position: relative;
     z-index: 5;
+  }
+  /* A line along the hand's top edge: the status and the panels float above it. */
+  .desk-float {
+    position: absolute;
+    z-index: 30;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
   }
 </style>

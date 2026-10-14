@@ -7,8 +7,9 @@
 //   npm run build && node server/server.mjs --port 6311     (or the stichle-prod preview)
 //   node tools/qa.mjs [base] [outdir]          ROUNDS=3 W=390 H=844 by default
 //   CLOCK=quick (a clock per move), SLOWFONT=2000 (the display face arrives late), BIDDING=secret,
-//   LENGTH=half|short, TEMPO=fast, FOREHEAD=1, SPECIALS=1
-import { webkit } from '../../folio/node_modules/playwright/index.mjs';
+//   LENGTH=half|short, TEMPO=fast, FOREHEAD=1, SPECIALS=1, SIZE=auto|1|1.25|1.5 (the desktop table's
+//   size), BROWSER=chromium (WebKit by default; the desktop table's zoom differs between the two)
+import { chromium, webkit } from '../../folio/node_modules/playwright/index.mjs';
 import { mkdirSync } from 'node:fs';
 
 const BASE = process.argv[2] ?? 'http://localhost:6311';
@@ -33,16 +34,17 @@ mkdirSync(OUT, { recursive: true });
 const problems = [];
 const say = (...a) => console.log(...a);
 
-const browser = await webkit.launch();
+const browser = await (process.env.BROWSER === 'chromium' ? chromium : webkit).launch();
 async function person(name) {
   // The service worker fetches past context.route, so with it running the held font would arrive on
   // time and SLOWFONT would test nothing (Stammtisch found it, 2026-10-14).
   const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, serviceWorkers: SLOWFONT ? 'block' : 'allow' });
-  await context.addInitScript(() => {
+  await context.addInitScript((size) => {
     try {
       localStorage.setItem('ewo:lang', 'de');
       // The how-to opens on a first visit (Guide.svelte); these players have read it.
       localStorage.setItem('stichle:guide', '1');
+      if (size) localStorage.setItem('stichle:size', size);
     } catch {}
     // Every press, for the stall report: what it landed on, and whether that's inside the hand.
     window.__downs = [];
@@ -95,7 +97,7 @@ async function person(name) {
       requestAnimationFrame(look);
     };
     requestAnimationFrame(look);
-  });
+  }, process.env.SIZE ?? '');
   if (SLOWFONT) await context.route('**/stichle-display-*.woff2', async (route) => {
     await new Promise((r) => setTimeout(r, SLOWFONT));
     await route.continue();
@@ -229,6 +231,9 @@ async function act(p) {
   }
   if (phase === 'scored') {
     const next = p.page.getByRole('button', { name: /Weiter zu Runde/ });
+    // Already pressed and on its way (Folio's waiting.js: aria-busy): a second press would wait on
+    // the busy button until the round has moved on (Chromium does; WebKit lets it through).
+    if ((await next.getAttribute('aria-busy').catch(() => null)) === 'true') return false;
     if (await next.isEnabled().catch(() => false)) {
       await next.click();
       return true;
