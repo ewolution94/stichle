@@ -340,9 +340,17 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     if (g.phase !== 'round') return;
     if (s.phase === 'bid') {
       // In the forehead round the bot can't see its own card either (bots.mjs → botBidForehead).
-      for (const seat of only === null ? waiting(s) : [only]) {
-        if (s.phase === 'bid' && bidders(s).includes(seat)) placeBid(r, seat, blind(g) ? botBidForehead(s, seat) : botBid(s, seat, styleOf(r, seat)));
-      }
+      // One bid a turn of the event loop: a master thinks for up to 150 ms, and the other rooms'
+      // streams shouldn't wait on several of them in a row (the clock running out on secret bids).
+      const queue = only === null ? waiting(s) : [only];
+      const step = () => {
+        while (queue.length && !(s.phase === 'bid' && bidders(s).includes(queue[0]))) queue.shift();
+        const seat = queue.shift();
+        if (seat === undefined || r.game !== g) return;
+        placeBid(r, seat, blind(g) ? botBidForehead(s, seat) : botBid(s, seat, styleOf(r, seat)));
+        if (queue.length) later(r, 0, step);
+      };
+      step();
       return;
     }
     const seat = s.turn;

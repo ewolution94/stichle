@@ -297,9 +297,10 @@ function slip(state, seat, legal, card) {
 /** How much play a master's decision may cost, in cards played across all its trial deals
  *  (STICHLE_MASTER_PLAYS overrides it, for tools/ladder.mjs). */
 const MASTER_PLAYS = Number(globalThis.process?.env?.STICHLE_MASTER_PLAYS ?? 8000);
-/** Each choice is tried in at least this many deals, and at most this many. */
+/** Each choice is tried in this many deals at least (time allowing), and at most in this many. */
 const MASTER_DEALS = [8, 120];
-/** A safety stop, should a slow machine take longer than the budget means to: ms per decision. */
+/** A hard stop in wall-clock time, for a slow machine (the NAS's two cores can take 3 to 5 times
+ *  as long): no new deal starts after it, and one deal is a few ms; every choice has at least one. */
 const MASTER_MS = 150;
 
 /**
@@ -321,7 +322,7 @@ function masterPlay(state, seat, legal) {
   for (let d = 0; d < deals; d++) {
     const hands = dealOut(state, seat, unseen, voids, r);
     for (const id of choices) total.set(id, total.get(id) + playOut(state, seat, hands, id));
-    if (d >= MASTER_DEALS[0] && Date.now() > until) break;
+    if (Date.now() > until) break;
   }
   // The best total; a tie goes to the rules' own card, then to the cheaper one.
   const rules = rulePlay(state, seat, legal, true);
@@ -351,16 +352,18 @@ function masterBid(state, seat, n, temper) {
   const known = visibleBids(state, seat);
   const total = new Map(choices.map((b) => [b, 0]));
   const until = Date.now() + MASTER_MS;
+  let dealt = 0;
   for (let d = 0; d < deals; d++) {
     const hands = dealOut(state, seat, unseen, new Map(), r);
     // What the others bid: what's on the table, else what a journeyman would on that hand.
     const trial = { ...state, hands };
     const bids = state.bids.map((b, i) => (i === seat ? null : known[i] ?? settle(trial, i, estimate(trial, i))));
     for (const b of choices) total.set(b, total.get(b) + playRound(state, seat, hands, bids.map((x, i) => (i === seat ? b : x))));
-    if (d >= MASTER_DEALS[0] && Date.now() > until) break;
+    dealt++;
+    if (Date.now() > until) break;
   }
   // A bold bot leans up, a cautious one down: about four points a trick, on average per deal.
-  const lean = (LEAN[temper] ?? 0) * 13 * deals;
+  const lean = (LEAN[temper] ?? 0) * 13 * dealt;
   return choices.reduce((best, b) => (total.get(b) + lean * (b - n) > total.get(best) + lean * (best - n) ? b : best));
 }
 
