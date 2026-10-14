@@ -265,25 +265,25 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 10px;
     width: min(100%, 290px);
     height: 180px;
     padding: 18px 24px;
     color: var(--ink);
     text-align: left;
   }
+  /* Each row in the middle between its rules, the words and the score centred on each other (they
+     sat 2 to 5 px low on a shared baseline: plans/text-centering.md, 2026-10-14). */
   .pad .row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding-bottom: 8px;
+    padding: 9px 0;
     border-bottom: 1px solid rgb(28 26 34 / 0.12);
     font-size: 14px;
   }
   .pad .row:last-child {
     border-bottom: 0;
-    padding-bottom: 0;
   }
   .pad b {
     font-size: 22px;

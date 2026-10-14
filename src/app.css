@@ -15,6 +15,11 @@
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
+  /* The caps in the middle of the face's own line box (its ascent 0.96 em and descent 0.29 em put
+     them 0.036 em high), the line as tall as before: measured with tools/text-audit.mjs → capCentred
+     in WebKit and Chromium alike (plans/text-centering.md, 2026-10-14). */
+  ascent-override: 99.9%;
+  descent-override: 25.1%;
 }
 
 :root,

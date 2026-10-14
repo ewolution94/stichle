@@ -58,7 +58,11 @@
   .bar.scrolled {
     border-bottom-color: rgb(236 230 214 / 0.16);
   }
+  /* A flex box, so the logo sits in the bar's middle rather than on the link's baseline (it stood
+     3.6 px high: plans/text-centering.md, 2026-10-14). */
   .home {
+    display: flex;
+    align-items: center;
     text-decoration: none;
   }
   .end {

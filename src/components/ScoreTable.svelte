@@ -112,7 +112,10 @@
   td small.miss {
     color: var(--fire);
   }
+  /* The round being played: the bid alone, a block of its own, so it sits in the cell's middle
+     rather than on the line the cell's own font would set (1.5 px low: plans/text-centering.md). */
   tr.now td small {
+    display: block;
     color: var(--ink-2);
   }
 </style>

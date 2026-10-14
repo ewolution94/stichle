@@ -9,9 +9,13 @@
 //   CLOCK=quick (a clock per move), SLOWFONT=2000 (the display face arrives late), BIDDING=secret,
 //   LENGTH=half|short, TEMPO=fast, FOREHEAD=1, SPECIALS=1, BOTS=apprentice|journeyman|master (their rank),
 //   SIZE=auto|1|1.25|1.5 (the desktop table's
-//   size), BROWSER=chromium (WebKit by default; the desktop table's zoom differs between the two)
+//   size), BROWSER=chromium (WebKit by default; the desktop table's zoom differs between the two),
+//   LANG_UI=en (German by default), AUDIT=1 (every shot also checks that text sits in the middle of
+//   its box and keeps its digits: tools/text-audit.mjs, plans/text-centering.md; plus home, the
+//   guide, Settings and the join page)
 import { chromium, webkit } from '../../folio/node_modules/playwright/index.mjs';
 import { mkdirSync } from 'node:fs';
+import { digitAudit, textAudit } from './text-audit.mjs';
 
 const BASE = process.argv[2] ?? 'http://localhost:6311';
 const OUT = process.argv[3] ?? '/tmp/stichle-qa/';
@@ -34,6 +38,19 @@ const W = Number(process.env.W ?? 390), H = Number(process.env.H ?? 844);
 mkdirSync(OUT, { recursive: true });
 
 const problems = [];
+const LANG = process.env.LANG_UI ?? 'de';
+/** Text off its box's middle by this many px or more, at every shot (tools/text-audit.mjs). */
+const AUDIT = process.env.AUDIT ? Number(process.env.AUDIT) : 0;
+const offCentre = new Map();
+const oldDigits = new Map();
+/** Boxes whose text isn't centred on purpose; say why. The score pad's column heads: each name stands
+ *  under its player's seal, at the foot of the head row. A card's face: its name is printed at its foot. */
+const AUDIT_SKIP = ['thead th', '.face'];
+/** Stichle Display has old-style digits and no lining ones (no OpenType features at all); the user
+ *  kept them ("Numbers look good", 2026-10-13). The digit check lists any other face. */
+const OWN_DIGITS = /Stichle Display/;
+/** The page's words in either language, for the buttons the run presses. */
+const say2 = (de, en) => new RegExp(`^(${de}|${en})$`);
 const say = (...a) => console.log(...a);
 
 const browser = await (process.env.BROWSER === 'chromium' ? chromium : webkit).launch();
@@ -41,9 +58,9 @@ async function person(name) {
   // The service worker fetches past context.route, so with it running the held font would arrive on
   // time and SLOWFONT would test nothing (Stammtisch found it, 2026-10-14).
   const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, serviceWorkers: SLOWFONT ? 'block' : 'allow' });
-  await context.addInitScript((size) => {
+  await context.addInitScript(([size, lang]) => {
     try {
-      localStorage.setItem('ewo:lang', 'de');
+      localStorage.setItem('ewo:lang', lang);
       // The how-to opens on a first visit (Guide.svelte); these players have read it.
       localStorage.setItem('stichle:guide', '1');
       if (size) localStorage.setItem('stichle:size', size);
@@ -99,7 +116,7 @@ async function person(name) {
       requestAnimationFrame(look);
     };
     requestAnimationFrame(look);
-  }, process.env.SIZE ?? '');
+  }, [process.env.SIZE ?? '', LANG]);
   if (SLOWFONT) await context.route('**/stichle-display-*.woff2', async (route) => {
     await new Promise((r) => setTimeout(r, SLOWFONT));
     await route.continue();
@@ -120,13 +137,14 @@ async function api(page, path, body, token) {
   );
 }
 
+// The guide's next pages lie to the right of the one shown, on purpose.
 async function overflow(p, label) {
   const wide = await p.page.evaluate(() => {
     const w = document.documentElement.clientWidth;
     return [...document.querySelectorAll('body *')]
       .filter((el) => {
         const r = el.getBoundingClientRect();
-        return r.width > 0 && r.right > w + 1 && !el.closest('.hand, .trick, svg');
+        return r.width > 0 && r.right > w + 1 && !el.closest('.hand, .trick, svg, ewo-guide');
       })
       .slice(0, 5)
       .map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')} → ${Math.round(el.getBoundingClientRect().right)}`);
@@ -145,6 +163,43 @@ async function snapOne(p, label) {
   await p.page.waitForTimeout(450);
   await p.page.screenshot({ path: `${OUT}${String(++shot).padStart(2, '0')}-${p.name}-${label}.png` });
   await overflow(p, label);
+  if (AUDIT) await audit(p, label);
+}
+
+async function audit(p, label) {
+  for (const row of await p.page.evaluate(textAudit, { min: AUDIT, skip: AUDIT_SKIP })) {
+    const key = `${row.where} | ${row.text.replace(/\d+/g, '#')}`;
+    if (!offCentre.has(key)) offCentre.set(key, { ...row, at: `${p.name}-${label}` });
+  }
+  for (const row of await p.page.evaluate(digitAudit)) {
+    if (OWN_DIGITS.test(row.font)) continue;
+    const key = `${row.where} | ${row.text.replace(/\d+/g, '#')}`;
+    if (!oldDigits.has(key)) oldDigits.set(key, { ...row, at: `${p.name}-${label}` });
+  }
+}
+
+if (AUDIT) {
+  // The screens no game passes through: home, the guide, Settings, and the page a table's link opens.
+  const p = await person('screens');
+  await p.page.goto(BASE, { waitUntil: 'load' });
+  await p.page.waitForTimeout(2600);
+  await snapOne(p, 'home');
+  await p.page.locator('ewo-settings-button').first().click();
+  await snapOne(p, 'settings');
+  // The guide, from Settings, and its next page.
+  await p.page.getByRole('button', { name: /So geht|How to play/ }).first().click();
+  await p.page.waitForSelector('ewo-guide[open]');
+  await snapOne(p, 'guide');
+  await p.page.keyboard.press('ArrowRight');
+  await snapOne(p, 'guide-2');
+  await p.page.keyboard.press('Escape');
+  const s = await api(p.page, '/api/rooms', { name: 'Anna', avatar: [1, 2, 3] });
+  const g = await person('screens-guest');
+  await g.page.goto(`${BASE}/${s.code}`, { waitUntil: 'load' });
+  await g.page.waitForTimeout(2600);
+  await snapOne(g, 'join');
+  await g.context.close();
+  await p.context.close();
 }
 
 // ---- the table ----
@@ -173,7 +228,7 @@ await api(host.page, `/api/rooms/${seat.code}/bot`, { add: true }, seat.token);
 await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING, clock: CLOCK, length: LENGTH, tempo: TEMPO, forehead: FOREHEAD, specials: SPECIALS, bots: BOTS }, seat.token);
 await snap(host, 'lobby');
 await snap(guest, 'lobby');
-await host.page.getByRole('button', { name: 'Karten geben' }).click();
+await host.page.getByRole('button', { name: say2('Karten geben', 'Deal') }).click();
 await host.page.waitForSelector('.table, .desk');
 say('dealt', seat.code);
 
@@ -204,12 +259,12 @@ async function act(p) {
   }
   if (phase === 'bid') {
     // One up with the dial when the round allows, then send.
-    const plus = p.page.getByRole('button', { name: 'Einen mehr' });
+    const plus = p.page.getByRole('button', { name: say2('Einen mehr', 'One more') });
     if (await plus.isEnabled({ timeout: 1500 }).catch(() => false)) await plus.click({ timeout: 1500 });
     // "Mustn't add up": the forbidden number can't be sent; one down (or up) instead.
     const send = p.page.locator('.panel.bid .btn.primary');
     if (await send.isDisabled({ timeout: 1500 }).catch(() => false)) {
-      const less = p.page.getByRole('button', { name: 'Einen weniger' });
+      const less = p.page.getByRole('button', { name: say2('Einen weniger', 'One fewer') });
       if (await less.isEnabled({ timeout: 1000 }).catch(() => false)) await less.click();
       else await plus.click({ timeout: 1000 });
       if (!seen[p.name].has('forbidden')) {
@@ -232,7 +287,7 @@ async function act(p) {
     return true;
   }
   if (phase === 'scored') {
-    const next = p.page.getByRole('button', { name: /Weiter zu Runde/ });
+    const next = p.page.getByRole('button', { name: /Weiter zu Runde|On to round/ });
     // Already pressed and on its way (Folio's waiting.js: aria-busy): a second press would wait on
     // the busy button until the round has moved on (Chromium does; WebKit lets it through).
     if ((await next.getAttribute('aria-busy').catch(() => null)) === 'true') return false;
@@ -354,10 +409,18 @@ for (;;) {
   if (!moved) await host.page.waitForTimeout(400);
 }
 
+// ---- the score pad, open over the table ----
+if (AUDIT) {
+  await host.page.getByRole('button', { name: say2('Spielblock', 'Score pad') }).first().click();
+  await snapOne(host, 'pad');
+  await host.page.keyboard.press('Escape');
+  await host.page.waitForTimeout(500);
+}
+
 // ---- the host ends it ----
 await host.page.locator('ewo-settings-button').click();
-await host.page.getByRole('button', { name: 'Partie beenden' }).click();
-await host.page.getByRole('button', { name: 'Ja, beenden' }).click();
+await host.page.getByRole('button', { name: say2('Partie beenden', 'End the game') }).click();
+await host.page.getByRole('button', { name: say2('Ja, beenden', 'Yes, end it') }).click();
 await host.page.waitForSelector('.final', { timeout: 10000 });
 await guest.page.waitForSelector('.final', { timeout: 10000 });
 await snap(host, 'final');
@@ -368,5 +431,14 @@ for (const p of [host, guest]) {
   if (jumps.length) problems.push(`${p.name}: the table moved ${jumps.length}×:\n  ${[...new Set(jumps)].slice(0, 12).join('\n  ')}`);
 }
 
+if (offCentre.size)
+  problems.push(
+    `text off the middle of its box in ${offCentre.size} places (px, + low, − high; bias: the font's own share):\n  ${[...offCentre.values()]
+      .sort((a, b) => Math.abs(b.off) - Math.abs(a.off))
+      .map((r) => `${r.off > 0 ? '+' : ''}${r.off} (bias ${r.bias}) ${r.where} "${r.text}" ${r.font} h${r.height} @${r.at}`)
+      .join('\n  ')}`,
+  );
+if (oldDigits.size)
+  problems.push(`old-style digits (a font: shorthand drops lining-nums) in ${oldDigits.size} places:\n  ${[...oldDigits.values()].map((r) => `${r.where} "${r.text}" ${r.font} [${r.numeric}] @${r.at}`).join('\n  ')}`);
 say(problems.length ? `PROBLEMS:\n${problems.join('\n')}` : 'no problems');
 await browser.close();
