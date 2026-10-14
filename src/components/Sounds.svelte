@@ -27,10 +27,11 @@
     if (landed) {
       play.card();
       const card = g.lastTrick && g.lastTrick.n !== pg.lastTrick?.n ? g.lastTrick.cards.at(-1)?.card : g.trick.cards.at(-1)?.card;
-      if (card?.startsWith('z-')) setTimeout(() => play.wizard(), 80);
+      if (card?.startsWith('z-') || card === 'dragon') setTimeout(() => play.wizard(), 80);
     }
     if (g.lastTrick && g.lastTrick.n !== pg.lastTrick?.n) {
-      const yours = g.lastTrick.winner === mine;
+      // A stolen trick (the Dieb) is nobody's, yours neither.
+      const yours = g.lastTrick.winner === mine && !g.lastTrick.stolen;
       // With the winner's reveal on the table (src/lib/table.ts → BEATS: 700 ms after the last card, 350 at the fast tempo).
       setTimeout(() => (yours ? play.won() : play.lost()), (BEATS[g.tempo] ?? BEATS.normal).rest);
     }

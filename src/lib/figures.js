@@ -451,6 +451,81 @@ export const FIGURES = {
       ...face(125, 94),
     ],
   },
+
+  // The special cards (R3, a house rule). Der Drache: rearing on its hind legs, wings spread, fire from
+  // its jaws (gold), its belly pale, its tail along the ground.
+  dragon: {
+    names: { de: 'Drache', en: 'Dragon' },
+    parts: [
+      // The wing behind it: a bat's, its fingers spread to sharp points.
+      ['cloth', smooth([[140, 182], [126, 146], [130, 100, 1], [146, 132, 1], [158, 90, 1], [168, 130, 1], [190, 104, 1], [186, 146], [166, 176]])],
+      ['cloth', limb([[150, 262], [168, 276], [162, 289], [142, 291]], 11)],
+      ['cloth', smooth([[104, 196], [122, 170], [152, 176], [166, 206], [160, 250], [140, 274], [112, 276], [98, 254]])],
+      ['linen', smooth([[118, 192], [134, 186], [146, 202], [144, 240], [130, 262], [116, 250], [110, 220]])],
+      ['cloth', limb([[124, 250], [120, 270], [114, 287]], 12)],
+      ['cloth', limb([[152, 254], [156, 272], [158, 287]], 12)],
+      ['dark', ellipse(110, 290, 10, 4)],
+      ['dark', ellipse(160, 290, 10, 4)],
+      ['cloth', limb([[122, 186], [112, 166], [106, 148]], 17)],
+      // The head, jaws open, two horns back.
+      ['cloth', smooth([[118, 126], [106, 118], [88, 120, 1], [102, 130], [86, 140, 1], [104, 148], [120, 150], [124, 136]])],
+      ['cloth', poly([[110, 124], [118, 102], [120, 126]])],
+      ['cloth', poly([[116, 128], [130, 110], [126, 132]])],
+      // Its fire, pale against the copper.
+      ['linen', smooth([[88, 132], [72, 120], [74, 104], [82, 114], [84, 98], [92, 114], [94, 128]])],
+      ['glow', circle(108, 128, 2.6)],
+      ['cloth', limb([[112, 198], [96, 206], [90, 220]], 8)],
+    ],
+  },
+
+  // Die Fee: a slender figure on tiptoe, white wings behind her, a star on her wand, sparks around her.
+  fairy: {
+    names: { de: 'Fee', en: 'Fairy' },
+    parts: [
+      ['linen', smooth([[118, 128], [98, 98], [80, 92, 1], [76, 116], [100, 140]])],
+      ['linen', smooth([[132, 128], [152, 98], [170, 92, 1], [174, 116], [150, 140]])],
+      ['linen', smooth([[118, 142], [98, 156], [90, 178, 1], [108, 174], [120, 152]])],
+      ['linen', smooth([[132, 142], [152, 156], [160, 178, 1], [142, 174], [130, 152]])],
+      ['cloth', gown(276, 98, 152)],
+      ['dark', ellipse(125, 284, 7, 3.5)],
+      ['cloth', limb([[118, 276], [122, 284]], 5)],
+      ['cloth', limb([[104, 132], [96, 152], [94, 172]], 7)],
+      ['skin', circle(94, 176, 4.5)],
+      ['cloth', limb([[146, 132], [160, 116], [168, 100]], 7)],
+      ['skin', circle(168, 98, 4.5)],
+      ['gold', limb([[168, 98], [178, 72]], 2.6)],
+      ['gold', star(180, 64, 11)],
+      ...head(125, 98, 13, 16),
+      ['cloth', circle(125, 78, 8)],
+      ['gold', star(100, 228, 5)],
+      ['gold', star(154, 208, 4)],
+      ['gold', star(146, 252, 5)],
+      ['gold', star(92, 196, 3.5)],
+    ],
+  },
+
+  // Der Dieb: hooded and masked, sneaking on tiptoe, the sack over his shoulder, a coin in his hand.
+  thief: {
+    names: { de: 'Dieb', en: 'Thief' },
+    parts: [
+      ['linen', smooth([[92, 112], [74, 116], [66, 136], [70, 160], [90, 170], [104, 152], [102, 124]])],
+      ['dark', limb([[90, 116], [96, 110]], 9)],
+      ['dark', limb([[86, 122], [98, 116]], 3)],
+      ['cloth', limb([[112, 250], [100, 272], [88, 286]], 12)],
+      ['cloth', limb([[138, 250], [154, 268], [160, 286]], 12)],
+      ['dark', ellipse(84, 289, 10, 4)],
+      ['dark', ellipse(164, 289, 10, 4)],
+      ['cloth', smooth([[112, 128], [140, 124], [158, 150], [162, 200], [152, 254], [102, 258], [94, 210], [100, 162]])],
+      ['cloth', limb([[112, 136], [102, 124], [96, 116]], 9)],
+      ['cloth', limb([[150, 146], [166, 166], [174, 178]], 9)],
+      ['skin', circle(176, 182, 4.5)],
+      ['gold', circle(178, 192, 6)],
+      ['cloth', smooth([[104, 96], [116, 74], [140, 74], [152, 92], [168, 112, 1], [148, 112], [146, 122], [114, 126], [102, 114]])],
+      ['linen', limb([[114, 100], [140, 100]], 8)],
+      ['dark', ellipse(121, 100, 3, 2)],
+      ['dark', ellipse(133, 100, 3, 2)],
+    ],
+  },
 };
 
 // The drawing helpers, for the elements' own people (people.js), drawn the same way.

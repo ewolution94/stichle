@@ -2,7 +2,8 @@
 
 export type FigureId =
   | 'beggar' | 'maid' | 'farmhand' | 'shepherdess' | 'farmer' | 'miller' | 'smith'
-  | 'merchant' | 'monk' | 'knight' | 'duchess' | 'queen' | 'king' | 'wizard' | 'jester';
+  | 'merchant' | 'monk' | 'knight' | 'duchess' | 'queen' | 'king' | 'wizard' | 'jester'
+  | 'dragon' | 'fairy' | 'thief';
 
 export interface Figure {
   names: { de: string; en: string };

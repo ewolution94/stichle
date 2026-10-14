@@ -7,7 +7,7 @@
 //   npm run build && node server/server.mjs --port 6311     (or the stichle-prod preview)
 //   node tools/qa.mjs [base] [outdir]          ROUNDS=3 W=390 H=844 by default
 //   CLOCK=quick (a clock per move), SLOWFONT=2000 (the display face arrives late), BIDDING=secret,
-//   LENGTH=half|short, TEMPO=fast, FOREHEAD=1
+//   LENGTH=half|short, TEMPO=fast, FOREHEAD=1, SPECIALS=1
 import { webkit } from '../../folio/node_modules/playwright/index.mjs';
 import { mkdirSync } from 'node:fs';
 
@@ -23,6 +23,8 @@ const LENGTH = process.env.LENGTH ?? 'full';
 const TEMPO = process.env.TEMPO ?? 'normal';
 /** FOREHEAD=1: the one-card round played blind (R3). */
 const FOREHEAD = process.env.FOREHEAD === '1';
+/** SPECIALS=1: the Drache, the Fee and the Dieb in the deck (R3). */
+const SPECIALS = process.env.SPECIALS === '1';
 /** Hold the display face back this many ms, so the page starts in the fallback (a slow phone). */
 const SLOWFONT = Number(process.env.SLOWFONT ?? 0);
 const W = Number(process.env.W ?? 390), H = Number(process.env.H ?? 844);
@@ -162,7 +164,7 @@ if (process.env.SCREEN) {
   screen = { name: 'screen', context, page };
 }
 await api(host.page, `/api/rooms/${seat.code}/bot`, { add: true }, seat.token);
-await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING, clock: CLOCK, length: LENGTH, tempo: TEMPO, forehead: FOREHEAD }, seat.token);
+await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING, clock: CLOCK, length: LENGTH, tempo: TEMPO, forehead: FOREHEAD, specials: SPECIALS }, seat.token);
 await snap(host, 'lobby');
 await snap(guest, 'lobby');
 await host.page.getByRole('button', { name: 'Karten geben' }).click();

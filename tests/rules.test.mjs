@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DECK,
+  DECK_SPECIAL,
   RuleError,
   SUITS,
   bid,
@@ -572,4 +573,77 @@ test('secret: everyone bids at once, in any order; the first trick is led left o
 
 test('a bidding mode the rules do not know is refused', () => {
   assert.throws(() => deal({ players: 3, round: 1, dealer: 0, randomInt: () => 0, bidding: 'loud' }), (e) => e.code === 'bidding');
+});
+
+test('the special cards: 63 with them, one each, parsed back; rounds and lengths follow the bigger deck', () => {
+  assert.equal(DECK_SPECIAL.length, 63);
+  assert.deepEqual(DECK_SPECIAL.slice(60), ['dragon', 'fairy', 'thief']);
+  for (const id of ['dragon', 'fairy', 'thief']) assert.deepEqual(parseCard(id), { k: 'x', name: id });
+  throws(() => parseCard('ghost'), 'card');
+  assert.deepEqual([3, 4, 5, 6].map((n) => roundsFor(n, true)), [21, 15, 12, 10]);
+  assert.equal(schedule(3, 'full', true).length, 21);
+  assert.deepEqual(schedule(3, 'half', true), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21]);
+  // A deal with them uses all 63: three hands of 21 in the last round of three, and no trump.
+  const last = deal({ players: 3, round: 21, dealer: 0, randomInt: seeded(4), specials: true });
+  assert.equal(new Set(last.hands.flat()).size, 63);
+  assert.equal(last.trumpCard, null);
+  assert.throws(() => deal({ players: 3, round: 21, dealer: 0, randomInt: seeded(4) }), (e) => e.code === 'round');
+});
+
+test('the special cards in hand: the Drache first, the Fee and the Dieb last; they never have to follow', () => {
+  assert.deepEqual(sortHand(['thief', 'fire-3', 'n-air', 'dragon', 'z-water', 'fairy']), ['dragon', 'z-water', 'fire-3', 'n-air', 'fairy', 'thief']);
+  // Fire led: a hand with fire must follow, but may always play a special.
+  const s = deal({ players: 3, round: 3, dealer: 2, hands: [['fire-9', 'water-2', 'air-4'], ['fire-2', 'dragon', 'water-5'], ['earth-1', 'fairy', 'thief']], trumpCard: 'air-1', specials: true });
+  bid(s, 0, 1);
+  bid(s, 1, 1);
+  bid(s, 2, 0);
+  play(s, 0, 'fire-9');
+  assert.deepEqual(legalCards(s, 1).sort(), ['dragon', 'fire-2']);
+});
+
+test('the special cards in a trick: the Drache takes it, the Fee takes the Drache, the Dieb steals it', () => {
+  const t = (cards, trump = 'fire') => trickWinner(cards.map((card, seat) => ({ seat, card })), trump);
+  assert.equal(t(['z-fire', 'dragon', 'fire-13']), 1);
+  assert.equal(t(['dragon', 'z-air', 'fire-13']), 0);
+  assert.equal(t(['dragon', 'fire-2', 'fairy']), 2);
+  // Without the Drache the Fee is a Jester: she loses to a 1.
+  assert.equal(t(['fairy', 'water-1', 'n-air']), 1);
+  // The Fee and the Dieb pass like Jesters when it comes to the suit led.
+  assert.deepEqual(suitToFollow([{ seat: 0, card: 'fairy' }, { seat: 1, card: 'thief' }, { seat: 2, card: 'water-4' }]), 'water');
+  // The Drache led frees the trick like a Wizard.
+  assert.equal(suitToFollow([{ seat: 0, card: 'dragon' }]), null);
+  // With the Dieb in it: the highest card would take it; that's who leads next.
+  assert.equal(t(['water-4', 'thief', 'water-9'], 'air'), 2);
+});
+
+test('the Dieb: the trick counts for nobody, and whoever would have taken it leads the next', () => {
+  const s = deal({ players: 3, round: 2, dealer: 2, hands: [['water-4', 'air-2'], ['thief', 'air-3'], ['water-9', 'air-5']], trumpCard: 'fire-1', specials: true });
+  bid(s, 0, 0);
+  bid(s, 1, 0);
+  bid(s, 2, 1);
+  play(s, 0, 'water-4');
+  play(s, 1, 'thief');
+  const r = play(s, 2, 'water-9');
+  assert.equal(r.trick.winner, 2);
+  assert.equal(r.trick.stolen, true);
+  assert.deepEqual(s.won, [0, 0, 0]);
+  assert.equal(s.turn, 2);
+  play(s, 2, 'air-5');
+  play(s, 0, 'air-2');
+  const end = play(s, 1, 'air-3');
+  assert.ok(end.done);
+  // Two tricks dealt, one taken: seat 2 met its bid of one, the others their nothing.
+  assert.deepEqual(s.won, [0, 0, 1]);
+  assert.deepEqual(s.points, [20, 20, 30]);
+});
+
+test('turned up as trump: the Drache lets the dealer pick, like a Wizard; the Fee and the Dieb mean no trump', () => {
+  const dragon = deal({ players: 3, round: 1, dealer: 0, hands: [['fire-1'], ['fire-2'], ['fire-3']], trumpCard: 'dragon', specials: true });
+  assert.equal(dragon.phase, 'trump');
+  assert.equal(dragon.turn, 0);
+  for (const id of ['fairy', 'thief']) {
+    const s = deal({ players: 3, round: 1, dealer: 0, hands: [['fire-1'], ['fire-2'], ['fire-3']], trumpCard: id, specials: true });
+    assert.equal(s.phase, 'bid');
+    assert.equal(s.trump, null);
+  }
 });

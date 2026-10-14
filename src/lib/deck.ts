@@ -13,15 +13,18 @@
 // hand: a card 74 px wide shows a strip of about 26 px, which is 88 units here.
 
 import type { BackId } from './achievements';
-import { FIGURES, silhouette, type Figure } from './figures.js';
+import { ellipse, FIGURES, silhouette, smooth, star, type Figure } from './figures.js';
 import { personOf } from './people.js';
 
 export type Suit = 'fire' | 'water' | 'earth' | 'air';
 /** How the cards look: the people of a medieval town (the default), or the classic letterpress deck. */
 export type Art = 'figures' | 'classic';
 export type Lang = 'de' | 'en';
-/** A card as the deck draws it: a number card, a Wizard (z) or a Jester (n), or the back. */
-export type Face = { k: 'num'; s: Suit; v: number } | { k: 'z'; s: Suit } | { k: 'n'; s: Suit } | { k: 'back' };
+/** The special cards (R3, a house rule): one each, no suit. */
+export type Special = 'dragon' | 'fairy' | 'thief';
+export const SPECIALS: Special[] = ['dragon', 'fairy', 'thief'];
+/** A card as the deck draws it: a number card, a Wizard (z) or a Jester (n), a special card (x), or the back. */
+export type Face = { k: 'num'; s: Suit; v: number } | { k: 'z'; s: Suit } | { k: 'n'; s: Suit } | { k: 'x'; name: Special } | { k: 'back' };
 
 export const SUITS: Suit[] = ['fire', 'water', 'earth', 'air'];
 type Shape = 'tri' | 'circle' | 'square' | 'diamond';
@@ -41,9 +44,11 @@ export const ULTRAMARINE = '#1d2b62';
 
 export const WORDS = {
   de: { z: 'Z', n: 'N', zName: 'Zauberer', nName: 'Narr', back: 'Rückseite',
-        suit: { fire: 'Feuer', water: 'Wasser', earth: 'Erde', air: 'Luft' } },
+        suit: { fire: 'Feuer', water: 'Wasser', earth: 'Erde', air: 'Luft' },
+        x: { dragon: 'Drache', fairy: 'Fee', thief: 'Dieb' } as Record<Special, string> },
   en: { z: 'W', n: 'J', zName: 'Wizard', nName: 'Jester', back: 'Back',
-        suit: { fire: 'Fire', water: 'Water', earth: 'Earth', air: 'Air' } },
+        suit: { fire: 'Fire', water: 'Water', earth: 'Earth', air: 'Air' },
+        x: { dragon: 'Dragon', fairy: 'Fairy', thief: 'Thief' } as Record<Special, string> },
 };
 
 /**
@@ -51,6 +56,7 @@ export const WORDS = {
  * Anything else is the back.
  */
 export function fromId(id: string | null | undefined): Face {
+  if (id === 'dragon' || id === 'fairy' || id === 'thief') return { k: 'x', name: id };
   const m = /^(?:(z|n)-(fire|water|earth|air)|(fire|water|earth|air)-(\d{1,2}))$/.exec(id ?? '');
   if (!m) return { k: 'back' };
   if (m[1]) return { k: m[1] as 'z' | 'n', s: m[2] as Suit };
@@ -71,6 +77,7 @@ export function nameOf(c: Face, lang: Lang = 'de') {
   if (c.k === 'num') return `${t.suit[c.s]} ${c.v}`;
   if (c.k === 'z') return `${t.zName} · ${t.suit[c.s]}`;
   if (c.k === 'n') return `${t.nName} · ${t.suit[c.s]}`;
+  if (c.k === 'x') return t.x[c.name];
   return t.back;
 }
 
@@ -252,8 +259,48 @@ const BACKS: Record<BackId, { ground: string; foil: [number, string][]; lines?: 
   gold: { ground: 'foil', foil: GOLD, lines: BLACK },
 };
 
+/**
+ * The special cards' looks (R3): the Drache on copper foil, the Fee on lilac, the Dieb under a pale
+ * moon; each with its own sign in the corners instead of a letter (Drache and Dieb share a D).
+ */
+const SPECIAL_LOOK: Record<Special, { disc: string; ink: string; glow: string }> = {
+  dragon: { disc: 'copper', ink: '#8a3f1c', glow: '#ff8a3c' },
+  fairy: { disc: '#cdb8ef', ink: '#5b3fa8', glow: '#ffffff' },
+  thief: { disc: '#b8c4d6', ink: '#2b3a5a', glow: '#ffe27a' },
+};
+/** The corner signs: the Drache's flame, the Fee's star, the Dieb's mask. */
+const SIGN: Record<Special, (cx: number, cy: number) => string> = {
+  dragon: (x, y) => smooth([[x, y - 24, 1], [x + 9, y - 8], [x + 13, y + 6], [x + 7, y + 18], [x, y + 21], [x - 7, y + 18], [x - 13, y + 6], [x - 9, y - 8]]),
+  fairy: (x, y) => star(x, y, 21),
+  thief: (x, y) =>
+    smooth([[x - 25, y - 6], [x - 12, y - 12], [x, y - 7], [x + 12, y - 12], [x + 25, y - 6], [x + 21, y + 8], [x + 8, y + 10], [x, y + 4], [x - 8, y + 10], [x - 21, y + 8]]) +
+    ellipse(x - 10, y - 1, 5.5, 3.5) +
+    ellipse(x + 10, y - 1, 5.5, 3.5),
+};
+
+/** A special card: its figure on its disc, as the paper cut (both decks draw it so). */
+function specialCard(c: Face & { k: 'x' }, lang: Lang, u: string) {
+  const t = WORDS[lang];
+  const look = SPECIAL_LOOK[c.name];
+  const copper = `url(#st-copper-${u})`;
+  const disc = look.disc === 'copper' ? copper : look.disc;
+  const ink = look.disc === 'copper' ? copper : look.ink;
+  const art = silhouette(FIGURES[c.name], { gold: `url(#st-gold-${u})`, glow: look.glow, paper: LINEN, emblem: () => '' });
+  const sign = `<path d="${SIGN[c.name](47, 52)}" fill="${ink}" fill-rule="evenodd"/>`;
+  return svg(foil(`st-gold-${u}`, GOLD, 9) + foil(`st-copper-${u}`, COPPER, 9), `<rect width="250" height="350" rx="14" fill="${PAPER}"/>
+    <circle cx="125" cy="150" r="88" fill="${disc}"/><circle cx="125" cy="150" r="96" fill="none" stroke="${ink}" stroke-width="1.2"/>
+    <path d="M30,294C70,284 100,288 125,290C150,292 185,284 220,294V300H30Z" fill="${BLACK}"/>
+    <g transform="translate(125 294) scale(.92) translate(-125 -292)">${art}</g>
+    <path d="M17,17H76V84Q76,100 60,100H17Z" fill="${PAPER}"/>
+    <path d="M233,333H174V266Q174,250 190,250H233Z" fill="${PAPER}"/>
+    ${frames(ink)}
+    ${corners(sign)}
+    ${label(t.x[c.name], BLACK)}`);
+}
+
 export function card(c: Face, { lang = 'de', uid = 0, art = 'figures', back = 'ultramarin' }: { lang?: Lang; uid?: number | string; art?: Art; back?: BackId } = {}) {
   const t = WORDS[lang], u = String(uid);
+  if (c.k === 'x') return specialCard(c, lang, u);
   if (art === 'figures' && c.k !== 'back') {
     // The number's person in its element (people.js); the Wizard and the Jester are everyone's.
     const fig = c.k === 'num' ? personOf(c.s, c.v) : FIGURES[c.k === 'z' ? 'wizard' : 'jester'];

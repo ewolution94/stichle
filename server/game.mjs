@@ -47,9 +47,10 @@ export const TEMPOS = Object.freeze(['normal', 'fast']);
 
 /**
  * clock: a clock per move · bidding: open (the original), uneven ("mustn't add up"), secret (R2) ·
- * length: full, half, short · tempo: normal, fast · forehead: the one-card round played blind (R3).
+ * length: full, half, short · tempo: normal, fast · forehead: the one-card round played blind ·
+ * specials: the Drache, the Fee and the Dieb in the deck (R3).
  */
-export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open', length: 'full', tempo: 'normal', forehead: false });
+export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open', length: 'full', tempo: 'normal', forehead: false, specials: false });
 
 export const LIMITS = {
   rooms: 200,
@@ -242,7 +243,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     if (players.length < LIMITS.minSeats) throw new GameError('too-few', 409);
     if (players.length > LIMITS.seats) throw new GameError('too-many', 409);
     const n = players.length;
-    const plan = schedule(n, r.settings.length);
+    const specials = Boolean(r.settings.specials);
+    const plan = schedule(n, r.settings.length, specials);
     r.game = {
       n: ++r.games,
       seats: players.map((p) => p.id),
@@ -252,6 +254,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       tempo: r.settings.tempo,
       /** The forehead round (R3): in the one-card round you see everyone's card but your own. */
       forehead: Boolean(r.settings.forehead),
+      /** The special cards (R3): the Drache, the Fee and the Dieb, in a deck of 63. */
+      specials,
       rounds: plan.length,
       /** Which round this is (1 …), and the cards it deals (the same in a full game). */
       no: 1,
@@ -284,7 +288,7 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
 
   function dealRound(r) {
     const g = r.game;
-    g.state = deal({ players: g.seats.length, round: g.round, dealer: g.dealer, randomInt, bidding: g.bidding });
+    g.state = deal({ players: g.seats.length, round: g.round, dealer: g.dealer, randomInt, bidding: g.bidding, specials: g.specials });
     // What R2's achievements will count: each seat's Wizards and Jesters as dealt.
     g.dealt = g.state.hands.map((hand) => ({ z: hand.filter(isWizard).length, n: hand.filter(isJester).length }));
     sortHands(g);
@@ -513,6 +517,7 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       hand: mine >= 0 && !final ? (hidden ? s.hands[mine].map(() => 'back') : s.hands[mine]) : null,
       legal: mine >= 0 && s.phase === 'play' && s.turn === mine && g.phase === 'round' ? (hidden ? legalCards(s, mine).map(() => 'back') : legalCards(s, mine)) : [],
       forehead: Boolean(g.forehead),
+      specials: Boolean(g.specials),
       /**
        * In the forehead round, every other seat's card while it's still held (yours null). Never for
        * the big screen: everyone at the table can see it, its own card too.
@@ -923,5 +928,6 @@ export function mergeSettings(current, body) {
   if (LENGTHS.includes(body?.length)) next.length = body.length;
   if (TEMPOS.includes(body?.tempo)) next.tempo = body.tempo;
   if (typeof body?.forehead === 'boolean') next.forehead = body.forehead;
+  if (typeof body?.specials === 'boolean') next.specials = body.specials;
   return next;
 }

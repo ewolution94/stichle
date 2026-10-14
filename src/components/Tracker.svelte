@@ -36,7 +36,8 @@
 
     // A trick you took, and the card you took it with.
     const t = g.lastTrick;
-    if (t && t.winner === mine) {
+    // A stolen trick (the Dieb) is nobody's.
+    if (t && t.winner === mine && !t.stolen) {
       const card = t.cards.find((c) => c.seat === mine)?.card ?? null;
       counted(countTrick(profile, `${round}:t${t.n}`, card, g.trump));
     }

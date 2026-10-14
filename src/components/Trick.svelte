@@ -81,16 +81,18 @@
     return { x: dx, y: dy };
   }
 
-  /** Off towards the winner's seat, a little further out than their card lay. */
+  /** Who takes the cards away: the winner, or with the Dieb in it the Dieb's player (it's nobody's trick). */
+  const taker = $derived(last ? (last.stolen ? (last.cards.find((c) => c.card === 'thief')?.seat ?? last.winner) : last.winner) : -1);
+  /** Off towards the taker's seat, a little further out than their card lay. */
   const away = $derived.by(() => {
     if (!last) return { x: 0, y: 0 };
-    const { dx, dy } = sweepOffset(angleOf(last.winner, mine, n), width, height);
+    const { dx, dy } = sweepOffset(angleOf(taker, mine, n), width, height);
     return { x: dx, y: dy };
   });
   /** The winner's spot and turn on the pile, where the others gather. */
   const winnerAt = $derived.by(() => {
     if (!last) return null;
-    const card = last.cards.find((c) => c.seat === last.winner);
+    const card = last.cards.find((c) => c.seat === taker);
     return card ? { ...place(card.seat), r: twist(card.card, card.seat) } : null;
   });
 </script>
@@ -98,7 +100,7 @@
 <div class="trick" class:fast={tempo === 'fast'} bind:clientWidth={width} bind:clientHeight={height} aria-live="polite">
   {#each shown as played, i (played.card)}
     {@const p = place(played.seat)}
-    {@const winner = showLast && last?.winner === played.seat}
+    {@const winner = showLast && taker === played.seat}
     {@const decided = showLast && phase !== 'rest'}
     <!-- Your card from the forehead round flies as its back: the real one shows once it has landed. -->
     {@const hidden = (played.card === flight.card || (flight.card === 'back' && played.seat === mine)) && now < flight.until}

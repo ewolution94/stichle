@@ -64,7 +64,8 @@
   const toFollow = $derived.by((): Suit | null => {
     for (const c of game.trick.cards) {
       const f = fromId(c.card);
-      if (f.k === 'n') continue;
+      // The Fee and the Dieb pass like Jesters; the Drache frees the trick like a Wizard.
+      if (f.k === 'n' || (f.k === 'x' && f.name !== 'dragon')) continue;
       return f.k === 'num' ? f.s : null;
     }
     return null;
@@ -163,6 +164,11 @@
         // The table rests a moment after the last card; the winner is named once it shows.
         if (!revealed) return '';
         const w = game.lastTrick.winner;
+        if (game.lastTrick.stolen) {
+          // The Dieb took it away: it counts for nobody (R3's special cards).
+          const thief = game.lastTrick.cards.find((c) => c.card === 'thief')?.seat ?? -1;
+          return thief === mine ? t('trickStolenYou') : t('trickStolen', { name: playerAt(thief)?.name ?? '' });
+        }
         return w === mine ? t('trickYou') : t('trickOther', { name: playerAt(w)?.name ?? '' });
       }
       if (myTurn) return game.trick.cards.length ? (toFollow && canFollow ? t('playFollow', { suit: suitName(toFollow) }) : t('playAny')) : t('playLead');

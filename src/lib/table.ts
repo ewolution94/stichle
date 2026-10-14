@@ -41,9 +41,10 @@ export function trickPhase(left: number, tempo: Tempo = 'normal'): TrickPhase {
  * The cards dealt in each round of a game of `players` at `length` (the same as server/rules.mjs →
  * schedule; tests/table.test.mjs keeps them together).
  */
-export function scheduleFor(players: number, length: Length = 'full'): number[] {
+export function scheduleFor(players: number, length: Length = 'full', specials = false): number[] {
   if (players < 3 || players > 6) return [];
-  const all = Array.from({ length: 60 / players }, (_, i) => i + 1);
+  // The special cards make the deck 63 (R3).
+  const all = Array.from({ length: Math.floor((specials ? 63 : 60) / players) }, (_, i) => i + 1);
   if (length === 'half') return all.filter((n) => n % 2 === 1);
   if (length === 'short') return all.slice(0, Math.ceil(all.length / 2));
   return all;

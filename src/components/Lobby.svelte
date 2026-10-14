@@ -45,7 +45,7 @@
   const amSeated = $derived(view.me !== null && view.order.includes(view.me));
   const menuPlayer = $derived(view.players.find((p) => p.id === menuFor) ?? null);
   /** The cards of each round at this table and length (R3): what the length's hint names. */
-  const plan = $derived(seated.length >= MIN && seated.length <= MAX ? scheduleFor(seated.length, settings.length ?? 'full') : []);
+  const plan = $derived(seated.length >= MIN && seated.length <= MAX ? scheduleFor(seated.length, settings.length ?? 'full', Boolean(settings.specials)) : []);
   const rounds = $derived(plan.length);
   const blocker = $derived(seated.length < MIN ? t('needPlayers', { n: MIN - seated.length }) : '');
 
@@ -259,6 +259,18 @@
         <b>{t(settings.forehead ? 'forehead_on' : 'forehead_off')}</b>
       {/if}
       <span class="hint">{t(settings.forehead ? 'foreheadHint_on' : 'foreheadHint_off')}</span>
+    </div>
+    <div class="setting">
+      <span class="label">{t('specials')}</span>
+      {#if isHost}
+        <ewo-segmented stretch value={settings.specials ? 'on' : 'off'} label={t('specials')} onchange={(e) => change({ specials: e.detail.value === 'on' })}>
+          <option value="off">{t('forehead_off')}</option>
+          <option value="on">{t('forehead_on')}</option>
+        </ewo-segmented>
+      {:else}
+        <b>{t(settings.specials ? 'forehead_on' : 'forehead_off')}</b>
+      {/if}
+      <span class="hint">{t(settings.specials ? 'specialsHint_on' : 'specialsHint_off')}</span>
     </div>
     <p class="length">{rounds ? t('lengthHint', { players: seated.length, rounds }) : t('lengthNone', { min: MIN, max: MAX })}</p>
   </section>

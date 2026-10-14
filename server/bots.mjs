@@ -5,13 +5,15 @@
 // Pure functions over a round state from rules.mjs, deterministic: the same state gives the same
 // move. Equal cards (two off-suit 9s) go from the shorter suit first, to make a void sooner.
 
-import { DECK, RuleError, SUITS, forbiddenBid, isWizard, legalCards, parseCard, trickWinner } from './rules.mjs';
+import { RuleError, SUITS, deckFor, forbiddenBid, isWizard, legalCards, parseCard, trickWinner } from './rules.mjs';
 
 /** @typedef {import('./rules.mjs').RoundState} RoundState */
 
 /** How much a card is worth keeping: Wizards, then trumps, then the rest by value, Jesters last. */
 function strength(id, trump) {
   const c = parseCard(id);
+  // The special cards: the Drache above everything; the Fee and the Dieb as cheap as a Jester.
+  if (c.k === 'x') return c.name === 'dragon' ? 110 : 0;
   if (c.k === 'z') return 100;
   if (c.k === 'n') return 0;
   return c.s === trump ? 50 + c.v : c.v;
@@ -44,6 +46,8 @@ export function botTrump(state, seat) {
  */
 function worth(id, trump, offScale) {
   const c = parseCard(id);
+  // The Drache takes its trick unless the Fee comes to it; the Fee and the Dieb take none.
+  if (c.k === 'x') return c.name === 'dragon' ? 0.95 : 0;
   if (c.k === 'z') return 1;
   if (c.k === 'n') return 0;
   if (c.s === trump) return c.v === 13 ? 0.9 : c.v >= 10 ? 0.7 : c.v >= 7 ? 0.35 : 0.15;
@@ -65,7 +69,7 @@ export function botBid(state, seat) {
   // (with 3 players the bots underbid by about two). So guess what the other hands claim, from the
   // cards this seat can't see, and scale up so that all claims add up to the round.
   const seen = new Set(trumpCard ? [...hand, trumpCard] : hand);
-  const unseen = DECK.filter((id) => !seen.has(id));
+  const unseen = deckFor(state.specials).filter((id) => !seen.has(id));
   const mean = unseen.reduce((sum, id) => sum + worth(id, trump, offScale), 0) / unseen.length;
   const claimed = mine + (players - 1) * round * mean;
   const expected = claimed > 0 ? mine * Math.max(1, round / claimed) : 0;
@@ -87,11 +91,12 @@ export function botBidForehead(state, seat) {
   const { players, trump, trumpCard, trick } = state;
   const others = state.hands.map((h, i) => (i === seat ? null : h[0]));
   const seen = new Set([...others.filter((id) => id !== null), ...(trumpCard ? [trumpCard] : [])]);
-  const mine = DECK.filter((id) => !seen.has(id));
+  const mine = deckFor(state.specials).filter((id) => !seen.has(id));
   let wins = 0;
   for (const id of mine) {
     const cards = Array.from({ length: players }, (_, k) => (trick.lead + k) % players).map((s) => ({ seat: s, card: s === seat ? id : others[s] }));
-    if (cards[trickWinner(cards, trump)].seat === seat) wins++;
+    // A trick with the Dieb in it is nobody's.
+    if (!cards.some((p) => p.card === 'thief') && cards[trickWinner(cards, trump)].seat === seat) wins++;
   }
   const n = wins * 2 >= mine.length ? 1 : 0;
   return n === forbiddenBid(state, seat) ? 1 - n : n;
@@ -119,7 +124,11 @@ export function botPlay(state, seat) {
 
   if (!trick.cards.length) return lead(legal, trump, needs, lowest, highest);
 
-  const wins = (id) => trickWinner([...trick.cards, { seat, card: id }], trump) === trick.cards.length;
+  // A card wins when the trick would be ours, and the Dieb isn't in it (a stolen trick is nobody's).
+  const wins = (id) => {
+    const cards = [...trick.cards, { seat, card: id }];
+    return !cards.some((p) => p.card === 'thief') && trickWinner(cards, trump) === trick.cards.length;
+  };
   const winners = legal.filter(wins);
   const losers = legal.filter((id) => !wins(id));
   const last = trick.cards.length === state.players - 1;
@@ -133,7 +142,7 @@ export function botPlay(state, seat) {
     // else a Wizard (a sure trick), else the best there is.
     const safe = winners.filter((id) => solid(id, trump));
     if (safe.length) return lowest(safe);
-    return winners.find(isWizard) ?? highest(winners);
+    return winners.find((id) => id === 'dragon') ?? winners.find(isWizard) ?? highest(winners);
   }
 
   // Enough tricks: get rid of the highest card that still loses (a card that loses now never wins).
@@ -149,7 +158,7 @@ function lead(legal, trump, needs, lowest, highest) {
   const trumps = numbers.filter((id) => trump && id.startsWith(`${trump}-`));
   const others = numbers.filter((id) => !trumps.includes(id));
   if (needs) {
-    const wizard = legal.find(isWizard);
+    const wizard = legal.find((id) => id === 'dragon') ?? legal.find(isWizard);
     if (wizard) return wizard;
     const highTrumps = trumps.filter((id) => parseCard(id).v >= 10);
     if (highTrumps.length) return highest(highTrumps);
@@ -160,7 +169,8 @@ function lead(legal, trump, needs, lowest, highest) {
   // A low card of another suit loses almost surely; with only high ones, a Jester loses for sure.
   const low = others.filter((id) => parseCard(id).v <= 7);
   if (low.length) return lowest(low);
-  const jester = legal.find((id) => parseCard(id).k === 'n');
+  // A Jester, or the Fee or the Dieb, loses for sure.
+  const jester = legal.find((id) => parseCard(id).k === 'n' || id === 'fairy' || id === 'thief');
   if (jester) return jester;
   return lowest(legal);
 }

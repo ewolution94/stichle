@@ -93,6 +93,16 @@
     </section>
 
     <section class="page">
+      <div class="art trick" aria-hidden="true">
+        <span class="c small win" style="--x:-44px;--y:-8px;--r:-10deg"><Card id="dragon" /></span>
+        <span class="c small" style="--x:0px;--y:10px;--r:2deg"><Card id="fairy" /></span>
+        <span class="c small" style="--x:44px;--y:-8px;--r:10deg"><Card id="thief" /></span>
+      </div>
+      <h2 class="display">{t('guideSpecialsTitle')}</h2>
+      <p>{t('guideSpecialsText')}</p>
+    </section>
+
+    <section class="page">
       <div class="art pad sheet" aria-hidden="true">
         <span class="row"><span>{t('guideBid')} 2 · 2 {t('guideTook')}</span><b class="display good">+40</b></span>
         <span class="row"><span>{t('guideBid')} 1 · 3 {t('guideTook')}</span><b class="display bad">−20</b></span>

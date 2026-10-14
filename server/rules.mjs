@@ -30,7 +30,18 @@ export const DECK = Object.freeze([
   ...SUITS.map((s) => `n-${s}`),
 ]);
 
-const CARD = /^(?:(fire|water|earth|air)-(1[0-3]|[1-9])|([zn])-(fire|water|earth|air))$/;
+/**
+ * The special cards (R3, a house rule, the user's pick): one of each, no suit. The Drache beats every
+ * card, Wizards too; the Fee loses to everything but takes a trick the Drache is in; the Dieb steals
+ * the trick: it counts for nobody, and whoever would have taken it leads next. With them the deck is
+ * 63 cards.
+ */
+export const SPECIALS = Object.freeze(['dragon', 'fairy', 'thief']);
+export const DECK_SPECIAL = Object.freeze([...DECK, ...SPECIALS]);
+/** @param {boolean} [specials] */
+export const deckFor = (specials = false) => (specials ? DECK_SPECIAL : DECK);
+
+const CARD = /^(?:(fire|water|earth|air)-(1[0-3]|[1-9])|([zn])-(fire|water|earth|air)|(dragon|fairy|thief))$/;
 
 /**
  * How the bids go (a house rule, R2): `open` is the original (in turn, any total); `uneven` the same,
@@ -41,7 +52,7 @@ const CARD = /^(?:(fire|water|earth|air)-(1[0-3]|[1-9])|([zn])-(fire|water|earth
 export const BIDDINGS = Object.freeze(['open', 'uneven', 'secret']);
 
 /**
- * @typedef {{ k: 'num', s: string, v: number } | { k: 'z', s: string } | { k: 'n', s: string }} Card
+ * @typedef {{ k: 'num', s: string, v: number } | { k: 'z', s: string } | { k: 'n', s: string } | { k: 'x', name: 'dragon' | 'fairy' | 'thief' }} Card
  * @typedef {{ seat: number, card: string }} Played
  * @typedef {{ lead: number, cards: Played[] }} Trick
  * @typedef {{
@@ -59,6 +70,7 @@ export function parseCard(id) {
   const m = typeof id === 'string' ? CARD.exec(id) : null;
   if (!m) throw new RuleError('card');
   if (m[1]) return { k: 'num', s: m[1], v: Number(m[2]) };
+  if (m[5]) return { k: 'x', name: /** @type {'dragon' | 'fairy' | 'thief'} */ (m[5]) };
   return { k: /** @type {'z' | 'n'} */ (m[3]), s: m[4] };
 }
 
@@ -72,10 +84,18 @@ export function isJester(id) {
   return typeof id === 'string' && CARD.test(id) && id.startsWith('n-');
 }
 
-/** Rounds in a game: every card is dealt in the last one. */
-export function roundsFor(players) {
+/** One of the special cards (Drache, Fee, Dieb). @param {unknown} id */
+export function isSpecial(id) {
+  return typeof id === 'string' && SPECIALS.includes(id);
+}
+
+/** Plays like a Jester when it comes to the suit: the Fee and the Dieb. @param {Card} c */
+const jesterLike = (c) => c.k === 'n' || (c.k === 'x' && c.name !== 'dragon');
+
+/** Rounds in a game: as many cards each as the deck allows (all 60 in the last one, without specials). */
+export function roundsFor(players, specials = false) {
   if (!Number.isInteger(players) || players < 3 || players > 6) throw new RuleError('players');
-  return DECK.length / players;
+  return Math.floor(deckFor(specials).length / players);
 }
 
 /**
@@ -90,9 +110,9 @@ export const LENGTHS = Object.freeze(['full', 'half', 'short']);
  * The cards dealt in each round of a game, in order: [1, 2, 3 … 20] for a full game of three.
  * @param {number} players  @param {Length} [length]
  */
-export function schedule(players, length = 'full') {
+export function schedule(players, length = 'full', specials = false) {
   if (!LENGTHS.includes(length)) throw new RuleError('length');
-  const all = Array.from({ length: roundsFor(players) }, (_, i) => i + 1);
+  const all = Array.from({ length: roundsFor(players, specials) }, (_, i) => i + 1);
   if (length === 'half') return all.filter((n) => n % 2 === 1);
   if (length === 'short') return all.slice(0, Math.ceil(all.length / 2));
   return all;
@@ -121,6 +141,8 @@ export function sortHand(hand, trump = null) {
   /** @param {string} id */
   const key = (id) => {
     const c = parseCard(id);
+    // The Drache before the Wizards; the Fee and the Dieb after the Jesters.
+    if (c.k === 'x') return c.name === 'dragon' ? -1 : c.name === 'fairy' ? 1100 : 1200;
     if (c.k === 'z') return SUITS.indexOf(c.s);
     if (c.k === 'n') return 1000 + SUITS.indexOf(c.s);
     return 100 + order.indexOf(c.s) * 20 + c.v;
@@ -138,9 +160,9 @@ const nextSeat = (seat, players) => (seat + 1) % players;
  *   hands?: string[][], trumpCard?: string | null, bidding?: Bidding }} options
  * @returns {RoundState}
  */
-export function deal({ players, round, dealer, randomInt, hands: fixed, trumpCard: fixedTrump, bidding = 'open' }) {
+export function deal({ players, round, dealer, randomInt, hands: fixed, trumpCard: fixedTrump, bidding = 'open', specials = false }) {
   if (!BIDDINGS.includes(bidding)) throw new RuleError('bidding');
-  const rounds = roundsFor(players);
+  const rounds = roundsFor(players, specials);
   if (!Number.isInteger(round) || round < 1 || round > rounds) throw new RuleError('round');
   // A dealer who isn't a seat at this table.
   if (!Number.isInteger(dealer) || dealer < 0 || dealer >= players) throw new RuleError('players');
@@ -153,7 +175,7 @@ export function deal({ players, round, dealer, randomInt, hands: fixed, trumpCar
     ({ hands, trumpCard } = fixedDeal(fixed, fixedTrump ?? null, players, round));
   } else {
     if (typeof randomInt !== 'function') throw new TypeError('deal needs randomInt or hands');
-    const deck = shuffled(DECK, randomInt);
+    const deck = shuffled(deckFor(specials), randomInt);
     hands = Array.from({ length: players }, () => []);
     // One card at a time, starting left of the dealer.
     for (let i = 0; i < players * round; i++) hands[(dealer + 1 + i) % players].push(deck[i]);
@@ -162,9 +184,10 @@ export function deal({ players, round, dealer, randomInt, hands: fixed, trumpCar
   }
 
   const turned = trumpCard ? parseCard(trumpCard) : null;
-  // A number card: its suit. A Jester (or no card): no trump. A Wizard: the dealer picks.
+  // A number card: its suit. A Jester (or no card): no trump. A Wizard: the dealer picks. The Drache
+  // turned up acts like a Wizard; the Fee and the Dieb like a Jester.
   const trump = turned?.k === 'num' ? turned.s : null;
-  const pick = turned?.k === 'z';
+  const pick = turned?.k === 'z' || (turned?.k === 'x' && turned.name === 'dragon');
   const left = nextSeat(dealer, players);
   return {
     players,
@@ -176,6 +199,7 @@ export function deal({ players, round, dealer, randomInt, hands: fixed, trumpCar
     phase: pick ? 'trump' : 'bid',
     turn: pick ? dealer : left,
     bidding,
+    specials,
     bids: Array(players).fill(null),
     won: Array(players).fill(0),
     trick: { lead: left, cards: [] },
@@ -251,7 +275,8 @@ export function bid(state, seat, n) {
 export function suitToFollow(cards) {
   for (const { card } of cards) {
     const c = parseCard(card);
-    if (c.k === 'n') continue;
+    // The Fee and the Dieb pass like Jesters; the Drache frees the trick like a Wizard.
+    if (jesterLike(c)) continue;
     return c.k === 'num' ? c.s : null;
   }
   return null;
@@ -273,18 +298,23 @@ export function legalCards(state, seat) {
     return c.k === 'num' && c.s === suit;
   };
   if (!hand.some(ofSuit)) return [...hand];
-  return hand.filter((id) => ofSuit(id) || isWizard(id) || isJester(id));
+  return hand.filter((id) => ofSuit(id) || isWizard(id) || isJester(id) || isSpecial(id));
 }
 
 /**
- * Which entry of a trick (in play order) takes it, as an index into `cards`: the first Wizard;
- * else the highest trump; else the highest card of the suit led. Only Jesters: the first Jester.
+ * Which entry of a trick (in play order) takes it, as an index into `cards`: the Drache (the Fee,
+ * when she's in it too); else the first Wizard; else the highest trump; else the highest card of the
+ * suit led. Only Jesters (and the Fee or the Dieb): the first of them. With the Dieb in it, this is
+ * who would have taken it: the trick counts for nobody, and they lead next (play).
  * -1 for an empty trick.
  * @param {readonly Played[]} cards  @param {string | null} trump
  */
 export function trickWinner(cards, trump) {
   if (!cards.length) return -1;
   const parsed = cards.map((p) => parseCard(p.card));
+  // The Drache takes every trick, unless the Fee is in it: then she does.
+  const special = (name) => parsed.findIndex((c) => c.k === 'x' && c.name === name);
+  if (special('dragon') >= 0) return special('fairy') >= 0 ? special('fairy') : special('dragon');
   const wizard = parsed.findIndex((c) => c.k === 'z');
   if (wizard >= 0) return wizard;
   // No Wizard, so the first card that isn't a Jester is a number card and sets the suit.
@@ -319,9 +349,11 @@ export function play(state, seat, card) {
   }
 
   const winner = state.trick.cards[trickWinner(state.trick.cards, state.trump)].seat;
-  const finished = { lead: state.trick.lead, cards: state.trick.cards, winner };
+  // The Dieb steals the trick: it counts for nobody; whoever would have taken it leads on.
+  const stolen = state.trick.cards.some((p) => p.card === 'thief');
+  const finished = { lead: state.trick.lead, cards: state.trick.cards, winner, ...(stolen ? { stolen: true } : {}) };
   state.tricks.push(finished);
-  state.won[winner] += 1;
+  if (!stolen) state.won[winner] += 1;
   state.trick = { lead: winner, cards: [] };
   state.turn = winner;
   const done = state.hands.every((h) => h.length === 0);

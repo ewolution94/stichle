@@ -22,6 +22,8 @@ export interface Settings {
   tempo: Tempo;
   /** The forehead round (R3): the one-card round played blind to your own card. */
   forehead: boolean;
+  /** The special cards (R3): the Drache, the Fee and the Dieb in a deck of 63. */
+  specials: boolean;
 }
 
 export interface Player {
@@ -43,7 +45,10 @@ export interface Trick {
 }
 
 export interface FinishedTrick extends Trick {
+  /** Who took it; with the Dieb in it, who would have (they lead next) and `stolen` is set. */
   winner: number;
+  /** The Dieb was in it (R3's special cards): the trick counts for nobody. */
+  stolen?: boolean;
   /** Which trick of the round (1 = the first). */
   n: number;
 }
@@ -78,6 +83,7 @@ export interface Game {
   length: Length;
   tempo: Tempo;
   forehead: boolean;
+  specials: boolean;
   /** In the forehead round, each other seat's card while it's held (yours null); otherwise null. */
   foreheads: (CardId | null)[] | null;
   dealer: number;

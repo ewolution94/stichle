@@ -491,3 +491,24 @@ test('the forehead round with bots: they bid on the others\' cards and the game 
   for (const row of v.game.pad) assert.equal(row.won.reduce((a, b) => a + b, 0), row.round);
   games.close();
 });
+
+test('the special cards: a game with them plays to the final; a stolen trick counts for nobody', () => {
+  for (const players of [3, 4]) {
+    const { games, clock } = setup(players * 7 + 1);
+    const r = room(games, 0);
+    for (let i = 1; i < players; i++) r.act(r.host, 'bot', { add: true });
+    r.act(r.host, 'settings', { specials: true });
+    r.act(r.host, 'start');
+    assert.equal(r.pages[0].view.game.specials, true);
+    assert.equal(r.pages[0].view.game.rounds, players === 3 ? 21 : 15);
+    const v = playToFinal(r, clock);
+    assert.equal(v.phase, 'final', `${players} players`);
+    assert.equal(v.game.pad.length, players === 3 ? 21 : 15);
+    // Every round: the tricks taken and the ones the Dieb stole add up to its cards (the Dieb steals at most one).
+    for (const row of v.game.pad) {
+      const taken = row.won.reduce((a, b) => a + b, 0);
+      assert.ok(taken === row.round || taken === row.round - 1, `round ${row.round}: ${taken}`);
+    }
+    games.close();
+  }
+});
