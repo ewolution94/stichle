@@ -155,7 +155,7 @@
     <span class="name">{p.name}</span>
     {#if p.id === view.me}<small>{t('you')}</small>{/if}
     {#if p.id === view.host}<small>{t('host')}</small>{/if}
-    {#if p.bot}<small class="rank"><span class="sr-only">{t('bot')}: </span><BotRank level={p.level} decorative />{t(`level_${p.level ?? 'journeyman'}`)}</small>{:else if !p.online}<small>{t('away')}</small>{/if}
+    {#if p.bot}<small class="rank"><BotRank level={p.level} label={t('bot')} />{t(`level_${p.level ?? 'journeyman'}`)}</small>{:else if !p.online}<small>{t('away')}</small>{/if}
   </svelte:element>
 {/snippet}
 

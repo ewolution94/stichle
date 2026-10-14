@@ -15,7 +15,7 @@
 //   guide, Settings and the join page)
 import { chromium, webkit } from '../../folio/node_modules/playwright/index.mjs';
 import { mkdirSync } from 'node:fs';
-import { digitAudit, textAudit } from './text-audit.mjs';
+import { digitAudit, stackAudit, textAudit } from './text-audit.mjs';
 
 const BASE = process.argv[2] ?? 'http://localhost:6311';
 const OUT = process.argv[3] ?? '/tmp/stichle-qa/';
@@ -43,12 +43,15 @@ const LANG = process.env.LANG_UI ?? 'de';
 const AUDIT = process.env.AUDIT ? Number(process.env.AUDIT) : 0;
 const offCentre = new Map();
 const oldDigits = new Map();
-/** Boxes whose text isn't centred on purpose; say why. The score pad's column heads: each name stands
- *  under its player's seal, at the foot of the head row. A card's face: its name is printed at its foot. */
-const AUDIT_SKIP = ['thead th', '.face'];
+/** Boxes whose text isn't centred on purpose, or that the audit can't measure as one; say why.
+ *  The score pad's column heads: each name stands under its player's seal, at the foot of the head
+ *  row. A card's face: its name is printed at its foot. The game's awards: two in a row, of one
+ *  height, their labels on one line at the top. The round's results and the collection button: each
+ *  part centred on its own in two faces (the audit averages their baselines; Chromium read 1.1 px). */
+const AUDIT_SKIP = ['thead th', '.face', '.award', '.result li', 'button.collection'];
 /** Stichle Display has old-style digits and no lining ones (no OpenType features at all); the user
  *  kept them ("Numbers look good", 2026-10-13). The digit check lists any other face. */
-const OWN_DIGITS = /Stichle Display/;
+const KEEP_DIGITS = ['Stichle Display'];
 /** The page's words in either language, for the buttons the run presses. */
 const say2 = (de, en) => new RegExp(`^(${de}|${en})$`);
 const say = (...a) => console.log(...a);
@@ -167,12 +170,15 @@ async function snapOne(p, label) {
 }
 
 async function audit(p, label) {
-  for (const row of await p.page.evaluate(textAudit, { min: AUDIT, skip: AUDIT_SKIP })) {
+  const rows = [
+    ...(await p.page.evaluate(textAudit, { min: AUDIT, skip: AUDIT_SKIP })),
+    ...(await p.page.evaluate(stackAudit, { min: AUDIT, skip: AUDIT_SKIP })).map((r) => ({ ...r, where: `${r.where} (stacked)` })),
+  ];
+  for (const row of rows) {
     const key = `${row.where} | ${row.text.replace(/\d+/g, '#')}`;
     if (!offCentre.has(key)) offCentre.set(key, { ...row, at: `${p.name}-${label}` });
   }
-  for (const row of await p.page.evaluate(digitAudit)) {
-    if (OWN_DIGITS.test(row.font)) continue;
+  for (const row of await p.page.evaluate(digitAudit, { keep: KEEP_DIGITS })) {
     const key = `${row.where} | ${row.text.replace(/\d+/g, '#')}`;
     if (!oldDigits.has(key)) oldDigits.set(key, { ...row, at: `${p.name}-${label}` });
   }

@@ -278,11 +278,14 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 9px 0;
+    /* Two pixels more below than above: the rule is part of the row, and the score's caps stand a
+       little low in its line (measured: tools/text-audit.mjs → stackAudit). */
+    padding: 8px 0 10px;
     border-bottom: 1px solid rgb(28 26 34 / 0.12);
     font-size: 14px;
   }
   .pad .row:last-child {
+    padding-bottom: 11px;
     border-bottom: 0;
   }
   .pad b {

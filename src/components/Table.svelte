@@ -291,8 +291,9 @@
 {#if desk}
 <div class="desk" class:my-turn={myTurn} style:--scale={scale}>
   <header class="desk-bar">
-    <span class="desk-round"><span class="label on-cloth">{t('round')}</span><b class="display">{game.no}<small>/{game.rounds}</small></b></span>
-    {#if rules.length}<span class="desk-rules">{rules.join(' · ')}</span>{/if}
+    <!-- The house rules stand on the round's line, so the bar holds one line of type (they sat 5 px
+         above it, each centred on its own: plans/text-centering.md). -->
+    <span class="desk-round"><span class="label on-cloth">{t('round')}</span><b class="display">{game.no}<small>/{game.rounds}</small></b>{#if rules.length}<span class="desk-rules">{rules.join(' · ')}</span>{/if}</span>
     <div class="tools">
       {#if game.endsAt && game.phase === 'round'}<Clock {room} endsAt={game.endsAt} seconds={game.moveSeconds} mine={myTurn} />{/if}
       <button class="tool" type="button" onclick={() => (padOpen = true)} aria-label={t('scorePad')}>
@@ -862,7 +863,6 @@
     border-bottom: 1px solid rgb(236 230 214 / 0.12);
   }
   .desk-round,
-  .desk-rules,
   .desk-bar .tools,
   .desk-seat,
   .desk-deck,
@@ -871,10 +871,19 @@
   .desk-float {
     zoom: var(--scale);
   }
+  /* One line of type, every part's box as tall as its text (no part reaches further below the line
+     than the round's number), so the bar centres the number's caps. */
   .desk-round {
     display: flex;
     align-items: baseline;
     gap: 10px;
+    /* Half a pixel lower once centred: the number's caps sat 0.6 px high in WebKit and 1.1 px in
+       Chromium, which rounds the face's ascent and descent to whole pixels. */
+    padding-top: 1px;
+    line-height: 1;
+  }
+  .desk-round :global(.label) {
+    line-height: 1;
   }
   .desk-round b {
     font-size: 27px;
@@ -886,6 +895,7 @@
     color: var(--on-cloth-2);
   }
   .desk-rules {
+    margin-left: 14px;
     font-size: 13px;
     color: var(--on-cloth-2);
   }

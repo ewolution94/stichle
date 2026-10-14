@@ -7,12 +7,17 @@
   import type { Level } from '../lib/api';
   import { t } from '../lib/i18n.svelte';
 
-  let { level = 'journeyman', size = 7, decorative = false }: { level?: Level; size?: number; decorative?: boolean } = $props();
+  let {
+    level = 'journeyman',
+    size = 7,
+    decorative = false,
+    label = '',
+  }: { level?: Level; size?: number; decorative?: boolean; /** Read out instead of the rank (the rank's name beside it). */ label?: string } = $props();
   const n = $derived(level === 'apprentice' ? 1 : level === 'master' ? 3 : 2);
 </script>
 
 <!-- Beside the rank's name (`decorative`), the lozenges are only a picture of it. -->
-<span class="pips" style:--pip="{size}px" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : t(`level_${level}`)} aria-hidden={decorative ? 'true' : undefined}>
+<span class="pips" style:--pip="{size}px" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : label || t(`level_${level}`)} aria-hidden={decorative ? 'true' : undefined}>
   {#each [1, 2, 3] as i (i)}<i class:on={i <= n}></i>{/each}
 </span>
 
