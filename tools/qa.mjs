@@ -35,7 +35,9 @@ const say = (...a) => console.log(...a);
 
 const browser = await webkit.launch();
 async function person(name) {
-  const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2 });
+  // The service worker fetches past context.route, so with it running the held font would arrive on
+  // time and SLOWFONT would test nothing (Stammtisch found it, 2026-10-14).
+  const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, serviceWorkers: SLOWFONT ? 'block' : 'allow' });
   await context.addInitScript(() => {
     try {
       localStorage.setItem('ewo:lang', 'de');
