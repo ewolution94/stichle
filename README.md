@@ -43,9 +43,12 @@ everyone at their own screen beside the call. Live at
 
 - **The rules are a pure state machine** (`server/rules.mjs`): the deal, trump, bids, which cards may
   be played, who takes a trick, the score. No clock, no I/O, JSON-shaped state; tested on its own,
-  including whole seeded games for every table size. The bots (`server/bots.mjs`) read the same state:
-  they bid from their high cards and trumps and the cards they can't see, and play to meet the bid
-  (take cheaply when they need a trick, duck when they don't).
+  including whole seeded games for every table size. The bots (`server/bots.mjs`) read the same state
+  and nothing but their own hand, at three ranks the host picks in the lobby (per table or per bot):
+  an Apprentice slips like a beginner, a Journeyman bids from its high cards and trumps and plays to
+  meet the bid while counting the cards, a Master deals the unseen cards out many times and plays the
+  card that scores best on average (about 20 ms a move, capped). Each bot's temperament comes with its
+  name and leans its bids. `node tools/ladder.mjs` plays the ranks against each other.
 - **The server keeps the game.** Rooms live in memory (`server/game.mjs`): seats, rounds, the score
   pad, the pauses (a finished trick holds the table for 1.6 s), the clock, the bots and the absent. A
   deploy ends running games; a game with no one online for two minutes ends, and an empty room is
@@ -106,7 +109,8 @@ This mirrors Schätzle, Vollmond, Kritzle and CDNMS:
 ```
 server/server.mjs         static files + security headers, wires the rest; no dependencies
 server/rules.mjs          Wizard's rules as a pure state machine (deal, trump, bids, tricks, score)
-server/bots.mjs           the bots' trump, bid and card
+server/bots.mjs           the bots' trump, bid and card, at three ranks
+tools/ladder.mjs          the ranks against each other: points per round, bids met, time per move
 server/game.mjs           rooms, seats, rounds, pauses, the clock, bots and the absent, each page's
                           view (no I/O; tested with a fake clock)
 server/api.mjs            the game over HTTP: JSON moves, the SSE stream

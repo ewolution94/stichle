@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { botBid, botBidForehead, botPlay, botTrump } from '../server/bots.mjs';
-import { DECK, SUITS, bid, deal, forbiddenBid, legalCards, pickTrump, play, roundsFor } from '../server/rules.mjs';
+import { LEVELS, TEMPERS, botBid, botBidForehead, botPlay, botTrump } from '../server/bots.mjs';
+import { DECK, SUITS, bid, deal, forbiddenBid, isJester, isWizard, legalCards, pickTrump, play, roundsFor, trickWinner } from '../server/rules.mjs';
 
 /** mulberry32: a repeatable random integer below n. */
 function seeded(seed) {
@@ -254,4 +254,108 @@ test('the forehead round: a bot bids from the others\' cards, never its own', ()
   // Its own card doesn't change the bid: it can't see it.
   const same = deal({ players: 3, round: 1, dealer: 2, hands: [['n-fire'], ['n-water'], ['z-air']], trumpCard: 'earth-5' });
   assert.equal(botBidForehead(same, 2), botBidForehead(weak, 2));
+});
+
+// ---- the ranks (the user, 2026-10-14: Apprentice, Journeyman, Master) ---------------------------
+
+const ranked = (level, temper = 'steady') => ({
+  bidder: (s, seat) => botBid(s, seat, { level, temper }),
+  player: (s, seat) => botPlay(s, seat, { level, temper }),
+});
+
+test('every rank plays legal cards and bids within the round, the same move from the same position', () => {
+  for (const level of LEVELS) {
+    // The master thinks for a while: short rounds for it.
+    const last = level === 'master' ? 4 : 10;
+    for (const players of [3, 5]) {
+      for (let r = 1; r <= last; r++) {
+        const s = round(players, r, r % players, 7000 + players * 50 + r, ranked(level));
+        assert.equal(s.phase, 'done');
+      }
+    }
+  }
+});
+
+test('no rank looks at another hand: shuffle the other seats\' cards among them and nothing changes', () => {
+  const rand = seeded(42);
+  for (const level of LEVELS) {
+    for (let k = 0; k < 24; k++) {
+      const players = 3 + (k % 3);
+      const r = 2 + (k % 4);
+      const s = deal({ players, round: r, dealer: k % players, randomInt: seeded(900 + k) });
+      if (s.phase === 'trump') pickTrump(s, s.dealer, botTrump(s, s.dealer));
+      // Some bids, then a card or two, so there's a trick to follow.
+      while (s.phase === 'bid') bid(s, s.turn, botBid(s, s.turn));
+      for (let i = 0; i < k % players; i++) play(s, s.turn, botPlay(s, s.turn));
+      const seat = s.turn;
+      const card = botPlay(s, seat, { level });
+      // The other hands, dealt again from the same cards (each keeps its size).
+      const others = s.hands.flatMap((h, i) => (i === seat ? [] : h));
+      for (let i = others.length - 1; i > 0; i--) {
+        const j = rand(i + 1);
+        [others[i], others[j]] = [others[j], others[i]];
+      }
+      const t = { ...s, hands: s.hands.map((h, i) => (i === seat ? h : others.splice(0, h.length))) };
+      assert.equal(botPlay(t, seat, { level }), card, `${level} plays the same without seeing other hands`);
+    }
+  }
+});
+
+test('the ranks keep their order: master over journeyman over apprentice, all over random play', () => {
+  const rand = seeded(5);
+  const lineup = ['apprentice', 'journeyman', 'master', 'random'];
+  const points = Object.fromEntries(lineup.map((l) => [l, 0]));
+  for (let d = 0; d < 160; d++) {
+    const players = 4;
+    const r = 1 + rand(5);
+    const levelAt = (seat) => lineup[(seat + d) % players];
+    const s = deal({ players, round: r, dealer: rand(players), randomInt: rand });
+    if (s.phase === 'trump') pickTrump(s, s.dealer, botTrump(s, s.dealer));
+    while (s.phase === 'bid') {
+      const level = levelAt(s.turn);
+      bid(s, s.turn, level === 'random' ? (forbiddenBid(s, s.turn) === 0 ? 1 : 0) : botBid(s, s.turn, { level }));
+    }
+    while (s.phase === 'play') {
+      const level = levelAt(s.turn);
+      const legal = legalCards(s, s.turn);
+      play(s, s.turn, level === 'random' ? legal[rand(legal.length)] : botPlay(s, s.turn, { level }));
+    }
+    s.points.forEach((p, seat) => (points[levelAt(seat)] += p));
+  }
+  assert.ok(points.master > points.journeyman, `master ${points.master} > journeyman ${points.journeyman}`);
+  assert.ok(points.journeyman > points.apprentice, `journeyman ${points.journeyman} > apprentice ${points.apprentice}`);
+  assert.ok(points.apprentice > points.random, `apprentice ${points.apprentice} > random ${points.random}`);
+});
+
+test('temperament: a bold bot bids higher than a steady one, a cautious one lower, over many hands', () => {
+  const sum = { cautious: 0, steady: 0, bold: 0 };
+  for (let k = 0; k < 200; k++) {
+    const s = deal({ players: 4, round: 3 + (k % 10), dealer: k % 4, randomInt: seeded(3000 + k) });
+    if (s.phase === 'trump') pickTrump(s, s.dealer, botTrump(s, s.dealer));
+    for (const temper of TEMPERS) sum[temper] += botBid(s, s.turn, { temper });
+  }
+  assert.ok(sum.bold > sum.steady && sum.steady > sum.cautious, JSON.stringify(sum));
+});
+
+test("an apprentice's slips stay small: the same trick won or lost, never a Wizard or a Jester instead", () => {
+  let slips = 0;
+  for (let k = 0; k < 400; k++) {
+    const players = 3 + (k % 4);
+    const s = deal({ players, round: 4 + (k % 6), dealer: k % players, randomInt: seeded(5000 + k) });
+    if (s.phase === 'trump') pickTrump(s, s.dealer, botTrump(s, s.dealer));
+    while (s.phase === 'bid') bid(s, s.turn, botBid(s, s.turn));
+    for (let i = 0; i < k % 5; i++) play(s, s.turn, botPlay(s, s.turn));
+    if (s.phase !== 'play') continue;
+    const seat = s.turn;
+    const meant = botPlay(s, seat, { level: 'plain' });
+    const played = botPlay(s, seat, { level: 'apprentice' });
+    if (meant === played) continue;
+    slips++;
+    assert.ok(!isWizard(played) && !isJester(played) && played !== 'dragon', `${played} is no Wizard or Jester`);
+    if (s.trick.cards.length) {
+      const takes = (id) => trickWinner([...s.trick.cards, { seat, card: id }], s.trump) === s.trick.cards.length;
+      assert.equal(takes(played), takes(meant), `${played} wins or loses as ${meant} would`);
+    }
+  }
+  assert.ok(slips > 40, `the apprentice slips now and then (${slips})`);
 });

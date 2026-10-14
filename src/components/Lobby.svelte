@@ -5,7 +5,7 @@
   the tap").
 -->
 <script lang="ts">
-  import { ApiError, type Config, type Player, type Settings, type View } from '../lib/api';
+  import { ApiError, LEVELS, type Config, type Level, type Player, type Settings, type View } from '../lib/api';
   import type { Avatar as AvatarValue } from '../lib/avatar';
   import { errorText, t } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
@@ -14,6 +14,7 @@
   import { actAt } from '../lib/waits';
   import Avatar from './Avatar.svelte';
   import AvatarMaker from './AvatarMaker.svelte';
+  import BotRank from './BotRank.svelte';
   import PlayerMenu from './PlayerMenu.svelte';
   import Qr from './Qr.svelte';
 
@@ -103,6 +104,16 @@
     }
   }
 
+  /** One bot's own rank, from its sheet: the sheet stays open to show it. */
+  async function levelFromMenu(level: Level, from: Event) {
+    menuError = '';
+    try {
+      await actAt(room, 'bot', { player: menuFor, level }, from);
+    } catch (e) {
+      menuError = errorText(e instanceof ApiError ? e.code : 'other');
+    }
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(link);
@@ -144,7 +155,7 @@
     <span class="name">{p.name}</span>
     {#if p.id === view.me}<small>{t('you')}</small>{/if}
     {#if p.id === view.host}<small>{t('host')}</small>{/if}
-    {#if p.bot}<small>{t('bot')}</small>{:else if !p.online}<small>{t('away')}</small>{/if}
+    {#if p.bot}<small class="rank"><span class="sr-only">{t('bot')}: </span><BotRank level={p.level} decorative />{t(`level_${p.level ?? 'journeyman'}`)}</small>{:else if !p.online}<small>{t('away')}</small>{/if}
   </svelte:element>
 {/snippet}
 
@@ -197,6 +208,18 @@
   </section>
 
   <section class="sheet setup" aria-label={t('settings')}>
+    <!-- The bots' rank (the user, 2026-10-14): every bot's, the stand-ins', and each new one's. -->
+    <div class="setting">
+      <span class="label">{t('botsSetting')}</span>
+      {#if isHost}
+        <ewo-segmented stretch value={settings.bots ?? 'journeyman'} label={t('botsSetting')} onchange={(e) => change({ bots: e.detail.value as Level })}>
+          {#each LEVELS as level (level)}<option value={level}>{t(`level_${level}`)}</option>{/each}
+        </ewo-segmented>
+      {:else}
+        <b>{t(`level_${settings.bots ?? 'journeyman'}`)}</b>
+      {/if}
+      <span class="hint">{isHost ? t('botsHint') : t('botsHintGuest')}</span>
+    </div>
     <div class="setting">
       <span class="label">{t('clock')}</span>
       {#if isHost}
@@ -295,6 +318,7 @@
     const p = menuPlayer;
     if (p) void fromMenu(p.bot ? 'bot' : 'kick', p.bot ? { add: false, player: p.id } : { player: p.id }, e);
   }}
+  onlevel={(level, e) => void levelFromMenu(level, e)}
   onclose={() => ((menuFor = null), (menuError = ''))}
   error={menuError}
 />
@@ -416,6 +440,11 @@
   }
   .player.me small {
     background: var(--paper);
+  }
+  .player small.rank {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
   .chair {
     width: 22px;

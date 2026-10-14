@@ -60,6 +60,31 @@ test('it takes three at the table to deal; bots fill chairs', () => {
   assert.equal(g.round, 1);
 });
 
+test("bots' ranks: the table's for every bot and each new one, a bot's own from its sheet, the temperament with the name", () => {
+  const { games } = setup();
+  const r = room(games, 1);
+  const bots = () => r.pages[0].view.players.filter((p) => p.bot);
+  r.act(r.host, 'bot', { add: true });
+  assert.deepEqual(bots().map((p) => [p.name, p.level, p.temper]), [['Robo Rita', 'journeyman', 'bold']]);
+  // The table's rank: every bot's, and the next one's.
+  r.act(r.host, 'settings', { bots: 'master' });
+  r.act(r.host, 'bot', { add: true });
+  assert.deepEqual(bots().map((p) => [p.name, p.level, p.temper]), [['Robo Rita', 'master', 'bold'], ['Bot Bernd', 'master', 'cautious']]);
+  // One bot's own; only the host, only a real rank, only a bot.
+  const rita = bots()[0].id;
+  assert.equal(code(() => r.act(r.seats[1], 'bot', { player: rita, level: 'apprentice' })), 'not-host');
+  assert.equal(code(() => r.act(r.host, 'bot', { player: rita, level: 'grandmaster' })), 'level');
+  assert.equal(code(() => r.act(r.host, 'bot', { player: r.seats[1], level: 'apprentice' })), 'no-player');
+  r.act(r.host, 'bot', { player: rita, level: 'apprentice' });
+  assert.deepEqual(bots().map((p) => p.level), ['apprentice', 'master']);
+  // An unknown rank in the settings is ignored.
+  r.act(r.host, 'settings', { bots: 'grandmaster' });
+  assert.equal(r.pages[0].view.settings.bots, 'master');
+  // The game plays through with mixed ranks.
+  r.act(r.host, 'start');
+  assert.equal(r.pages[0].view.phase, 'play');
+});
+
 test("a hand reaches only its own page; others, watchers and the big screen see how many", () => {
   const { games } = setup(3);
   const r = room(games, 2);

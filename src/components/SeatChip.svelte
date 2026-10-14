@@ -9,6 +9,8 @@
   import { score, t } from '../lib/i18n.svelte';
   import { opener } from '../lib/table';
   import Avatar from './Avatar.svelte';
+  import BotRank from './BotRank.svelte';
+  import { prefs } from '../lib/prefs.svelte';
 
   let {
     game,
@@ -43,7 +45,11 @@
     {#if dealer}<span class="dealer" title={t('dealer')} aria-label={t('dealer')}></span>{/if}
   </div>
   <div class="info">
-    <span class="name">{me ? t('you') : (player?.name ?? '?')}</span>
+    <span class="who">
+      <span class="name">{me ? t('you') : (player?.name ?? '?')}</span>
+      <!-- A bot's rank, unless Settings hides it (the user, 2026-10-14). -->
+      {#if player?.bot && prefs.ranks}<BotRank level={player.level} size={5} />{/if}
+    </span>
     <span class="line">
       {#if !showBid}
         <!-- The bid lies on the felt beside the card (BidCoins.svelte). -->
@@ -169,6 +175,16 @@
   .compact .info {
     align-items: center;
     width: 100%;
+  }
+  .who {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .compact .who {
+    justify-content: center;
   }
   .name {
     overflow: hidden;

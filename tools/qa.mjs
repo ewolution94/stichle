@@ -7,7 +7,8 @@
 //   npm run build && node server/server.mjs --port 6311     (or the stichle-prod preview)
 //   node tools/qa.mjs [base] [outdir]          ROUNDS=3 W=390 H=844 by default
 //   CLOCK=quick (a clock per move), SLOWFONT=2000 (the display face arrives late), BIDDING=secret,
-//   LENGTH=half|short, TEMPO=fast, FOREHEAD=1, SPECIALS=1, SIZE=auto|1|1.25|1.5 (the desktop table's
+//   LENGTH=half|short, TEMPO=fast, FOREHEAD=1, SPECIALS=1, BOTS=apprentice|journeyman|master (their rank),
+//   SIZE=auto|1|1.25|1.5 (the desktop table's
 //   size), BROWSER=chromium (WebKit by default; the desktop table's zoom differs between the two)
 import { chromium, webkit } from '../../folio/node_modules/playwright/index.mjs';
 import { mkdirSync } from 'node:fs';
@@ -21,6 +22,7 @@ const BIDDING = process.env.BIDDING ?? 'open';
 const CLOCK = process.env.CLOCK ?? 'off';
 /** The length (full, half, short) and the pace (normal, fast), R3. */
 const LENGTH = process.env.LENGTH ?? 'full';
+const BOTS = process.env.BOTS ?? 'journeyman';
 const TEMPO = process.env.TEMPO ?? 'normal';
 /** FOREHEAD=1: the one-card round played blind (R3). */
 const FOREHEAD = process.env.FOREHEAD === '1';
@@ -168,7 +170,7 @@ if (process.env.SCREEN) {
   screen = { name: 'screen', context, page };
 }
 await api(host.page, `/api/rooms/${seat.code}/bot`, { add: true }, seat.token);
-await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING, clock: CLOCK, length: LENGTH, tempo: TEMPO, forehead: FOREHEAD, specials: SPECIALS }, seat.token);
+await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING, clock: CLOCK, length: LENGTH, tempo: TEMPO, forehead: FOREHEAD, specials: SPECIALS, bots: BOTS }, seat.token);
 await snap(host, 'lobby');
 await snap(guest, 'lobby');
 await host.page.getByRole('button', { name: 'Karten geben' }).click();

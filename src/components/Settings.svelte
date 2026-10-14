@@ -11,7 +11,7 @@
   import { ApiError } from '../lib/api';
   import { errorText, i18n, setLanguage, systemLang, t, type LangChoice } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { prefs, setArt, setHand, setSize, type HandLayout } from '../lib/prefs.svelte';
+  import { prefs, setArt, setHand, setRanks, setSize, type HandLayout } from '../lib/prefs.svelte';
   import type { TableSize } from '../lib/table';
   import type { Art } from '../lib/deck';
   import { play, setSound, sound } from '../lib/sound.svelte';
@@ -178,6 +178,11 @@
           </ewo-segmented>
         </div>
       {/if}
+      <!-- A bot's rank on its place card (the user, 2026-10-14: "make it toggleable"). -->
+      <div class="row">
+        <span class="name">{t('ranksAtTable')}</span>
+        <ewo-switch checked={prefs.ranks} aria-label={t('ranksAtTable')} onchange={(e) => setRanks(e.detail.checked)}></ewo-switch>
+      </div>
       <div class="row">
         <span class="name">{t('soundsHint')}</span>
         <ewo-switch

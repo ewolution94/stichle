@@ -12,6 +12,7 @@
   import { loadCensus } from '../lib/census';
   import { angleOf } from '../lib/table';
   import Avatar from './Avatar.svelte';
+  import BotRank from './BotRank.svelte';
   import Card from './Card.svelte';
   import Logo from './Logo.svelte';
   import Qr from './Qr.svelte';
@@ -104,7 +105,7 @@
         <h2 class="display">{t('atTheTable')}</h2>
         <ol>
           {#each seated as p, i (p.id)}
-            <li><span class="n display">{i + 1}</span><Avatar avatar={p.avatar} size={44} /><span>{p.name}</span>{#if p.bot}<small>{t('bot')}</small>{/if}</li>
+            <li><span class="n display">{i + 1}</span><Avatar avatar={p.avatar} size={44} /><span>{p.name}</span>{#if p.bot}<small class="rank"><BotRank level={p.level} decorative />{t(`level_${p.level ?? 'journeyman'}`)}</small>{/if}</li>
           {/each}
         </ol>
       </section>
@@ -284,6 +285,11 @@
     align-items: center;
     gap: 14px;
     font: 600 clamp(18px, 1.6vw, 26px) / 1.2 var(--ewo-sans);
+  }
+  li small.rank {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
   }
   li small {
     padding: 3px 9px;

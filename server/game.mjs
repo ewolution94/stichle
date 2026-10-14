@@ -16,7 +16,7 @@
 
 import { randomBytes, randomInt as cryptoInt } from 'node:crypto';
 import { cleanAvatar, randomAvatar } from './avatar.mjs';
-import { botBid, botBidForehead, botPlay, botTrump } from './bots.mjs';
+import { LEVELS, botBid, botBidForehead, botPlay, botTrump } from './bots.mjs';
 import { BIDDINGS, LENGTHS, RuleError, SUITS, bid, bidders, deal, forbiddenBid, isJester, isWizard, legalCards, pickTrump, play, schedule, sortHand } from './rules.mjs';
 
 export { BIDDINGS, LENGTHS };
@@ -50,7 +50,7 @@ export const TEMPOS = Object.freeze(['normal', 'fast']);
  * length: full, half, short · tempo: normal, fast · forehead: the one-card round played blind ·
  * specials: the Drache, the Fee and the Dieb in the deck (R3).
  */
-export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open', length: 'full', tempo: 'normal', forehead: false, specials: false });
+export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open', length: 'full', tempo: 'normal', forehead: false, specials: false, bots: 'journeyman' });
 
 export const LIMITS = {
   rooms: 200,
@@ -91,6 +91,8 @@ const IDLE_TTL = 4 * 60 * 60_000;
 const BOT_THINK = [900, 1900];
 
 const BOT_NAMES = ['Robo Rita', 'Bot Bernd', 'Karo Klaus', 'Trumpf Tina', 'Stich Sven'];
+/** Each bot's temperament comes with its name (bots.mjs → LEAN): how high it bids. */
+const BOT_TEMPER = { 'Robo Rita': 'bold', 'Bot Bernd': 'cautious', 'Karo Klaus': 'steady', 'Trumpf Tina': 'bold', 'Stich Sven': 'cautious' };
 
 /**
  * @typedef {{ now(): number, setTimeout(fn: () => void, ms: number): any, clearTimeout(handle: any): void }} Clock
@@ -195,6 +197,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       name,
       avatar: cleanAvatar(rawAvatar, random),
       bot,
+      // A bot's rank (the table's, until the host gives it its own) and its temperament.
+      ...(bot ? { level: r.settings.bots ?? 'journeyman', temper: BOT_TEMPER[base] ?? 'steady' } : {}),
       joined: clock.now(),
       online: 0,
       offlineSince: clock.now(),
@@ -252,6 +256,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       schedule: plan,
       length: r.settings.length,
       tempo: r.settings.tempo,
+      /** The rank the stand-ins play at, for anyone away. */
+      bots: r.settings.bots ?? 'journeyman',
       /** The forehead round (R3): in the one-card round you see everyone's card but your own. */
       forehead: Boolean(r.settings.forehead),
       /** The special cards (R3): the Drache, the Fee and the Dieb, in a deck of 63. */
@@ -334,8 +340,9 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     if (g.phase !== 'round') return;
     if (s.phase === 'bid') {
       // In the forehead round the bot can't see its own card either (bots.mjs → botBidForehead).
-      const bidFor = blind(g) ? botBidForehead : botBid;
-      for (const seat of only === null ? waiting(s) : [only]) if (s.phase === 'bid' && bidders(s).includes(seat)) placeBid(r, seat, bidFor(s, seat));
+      for (const seat of only === null ? waiting(s) : [only]) {
+        if (s.phase === 'bid' && bidders(s).includes(seat)) placeBid(r, seat, blind(g) ? botBidForehead(s, seat) : botBid(s, seat, styleOf(r, seat)));
+      }
       return;
     }
     const seat = s.turn;
@@ -347,8 +354,15 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
         later(r, wait + 50, () => g.move === move && autoMove(r));
         return;
       }
-      return playCard(r, seat, botPlay(s, seat));
+      return playCard(r, seat, botPlay(s, seat, styleOf(r, seat)));
     }
+  }
+
+  /** How the bot for `seat` plays: a bot its own rank and temperament; a stand-in the table's rank. */
+  function styleOf(r, seat) {
+    const p = r.players.get(r.game.seats[seat]);
+    if (p?.bot) return { level: p.level ?? 'journeyman', temper: p.temper ?? 'steady' };
+    return { level: r.game.bots ?? 'journeyman', temper: 'steady' };
   }
 
   function chooseTrump(r, seat, suit) {
@@ -472,6 +486,7 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
         avatar: p.avatar,
         online: isOnline(p),
         bot: p.bot,
+        ...(p.bot ? { level: p.level ?? 'journeyman', temper: p.temper ?? 'steady' } : {}),
       })),
       game: r.game ? gameView(r, r.game, me) : null,
       now: clock.now(),
@@ -693,7 +708,10 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
         case 'settings': {
           requireHost(r, p);
           requirePhase(r, 'lobby', 'final');
+          const before = r.settings.bots;
           r.settings = mergeSettings(r.settings, body);
+          // The table's rank is every bot's: changing it changes theirs (a bot's own rank is set on it).
+          if (r.settings.bots !== before) for (const q of present(r)) if (q.bot) q.level = r.settings.bots;
           touch(r);
           return;
         }
@@ -808,6 +826,13 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
             const name = BOT_NAMES.find((n) => !used.has(n)) ?? BOT_NAMES[0];
             const bot = addPlayer(r, name, randomAvatar(random), true);
             if (!r.order.includes(bot.id)) r.order.push(bot.id);
+            touch(r);
+          } else if (body?.level !== undefined) {
+            // One bot's own rank.
+            const target = r.players.get(String(body?.player ?? ''));
+            if (!target?.bot || target.left) throw new GameError('no-player', 404);
+            if (!LEVELS.includes(body.level)) throw new GameError('level');
+            target.level = body.level;
             touch(r);
           } else {
             const target = body?.player ? r.players.get(String(body.player)) : bots.at(-1);
@@ -929,5 +954,6 @@ export function mergeSettings(current, body) {
   if (TEMPOS.includes(body?.tempo)) next.tempo = body.tempo;
   if (typeof body?.forehead === 'boolean') next.forehead = body.forehead;
   if (typeof body?.specials === 'boolean') next.specials = body.specials;
+  if (LEVELS.includes(body?.bots)) next.bots = body.bots;
   return next;
 }

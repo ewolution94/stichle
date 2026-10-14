@@ -15,6 +15,12 @@ export type Length = 'full' | 'half' | 'short';
 /** The table's pace (R3): the trick's pause and the bots' thinking, at leisure or quicker. */
 export type Tempo = 'normal' | 'fast';
 
+/** A bot's rank (the user, 2026-10-14): as in a guild, weakest first (server/bots.mjs). */
+export type Level = 'apprentice' | 'journeyman' | 'master';
+export const LEVELS: Level[] = ['apprentice', 'journeyman', 'master'];
+/** A bot's temperament, which comes with its name: how high it bids. */
+export type Temper = 'cautious' | 'steady' | 'bold';
+
 export interface Settings {
   clock: ClockChoice;
   bidding: Bidding;
@@ -24,6 +30,8 @@ export interface Settings {
   forehead: boolean;
   /** The special cards (R3): the Drache, the Fee and the Dieb in a deck of 63. */
   specials: boolean;
+  /** The bots' rank: every bot's (until the host gives one its own) and the stand-ins'. */
+  bots?: Level;
 }
 
 export interface Player {
@@ -32,6 +40,9 @@ export interface Player {
   avatar: Avatar;
   online: boolean;
   bot: boolean;
+  /** A bot's rank and temperament. */
+  level?: Level;
+  temper?: Temper;
 }
 
 export interface Played {
