@@ -74,7 +74,7 @@ async function person(name) {
     // The table never changes size or place while you play (the user, 2026-10-13: "it cannot jump"):
     // every frame, the cloth, the trick's area, your place card and your hand's box are measured, and
     // any move is written down with what the status line said.
-    const watched = ['.table .cloth', '.table .middle', '.table .dock > div.mine', '.table .hand'];
+    const watched = ['.table .cloth', '.table .middle', '.table .dock > div.mine', '.table .hand', '.desk .desk-cloth', '.desk .desk-middle', '.desk .desk-me', '.desk .hand'];
     const last = new Map();
     window.__jumps = [];
     const look = () => {
@@ -168,7 +168,7 @@ await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING, clo
 await snap(host, 'lobby');
 await snap(guest, 'lobby');
 await host.page.getByRole('button', { name: 'Karten geben' }).click();
-await host.page.waitForSelector('.table');
+await host.page.waitForSelector('.table, .desk');
 say('dealt', seat.code);
 
 // ---- playing like a person ----
@@ -180,13 +180,13 @@ async function phaseOf(p) {
     if (document.querySelector('[data-pending]')) return 'wait';
     if (document.querySelector('.panel.bid')) return 'bid';
     if (document.querySelector('.suitbtn')) return 'trump';
-    const status = document.querySelector('.status.mine');
+    const status = document.querySelector('.status.turn');
     if (status) return 'play';
     return 'wait';
   });
 }
 async function round(p) {
-  return p.page.evaluate(() => document.querySelector('.round .display')?.textContent ?? '');
+  return p.page.evaluate(() => document.querySelector('.round .display, .desk-round b')?.textContent ?? '');
 }
 
 async function act(p) {
@@ -269,7 +269,7 @@ for (;;) {
   const label = await round(host);
   const r = Number(label.split('/')[0]) || 0;
   // A stall: nothing on either page changes for 45 s. Say what each page shows and has heard, then stop.
-  const now = JSON.stringify(await Promise.all([host, guest].map((p) => p.page.evaluate(() => [document.querySelector('.status, .toast')?.textContent, document.querySelectorAll('.hand .slot').length, document.querySelectorAll('.trick .played').length, document.querySelector('.round .display')?.textContent]))));
+  const now = JSON.stringify(await Promise.all([host, guest].map((p) => p.page.evaluate(() => [document.querySelector('.status, .toast')?.textContent, document.querySelectorAll('.hand .slot').length, document.querySelectorAll('.trick .played').length, document.querySelector('.round .display, .desk-round b')?.textContent]))));
   if (now !== stillKey) {
     stillKey = now;
     stillSince = Date.now();
@@ -299,7 +299,7 @@ for (;;) {
       }));
       problems.push(`${p.name} stalled 45 s: ${JSON.stringify(d)}`);
       // On the page whose move it is: tap the first card twice, then try the keyboard, and say what happened.
-      if (d.status && (await p.page.locator('.status.mine').count())) {
+      if (d.status && (await p.page.locator('.status.turn').count())) {
         const box = await p.page.locator('.hand .slot').first().boundingBox();
         const state = () => p.page.evaluate(() => ({ lifted: document.querySelectorAll('.hand .slot.lifted').length, air: document.querySelectorAll('.hand .slot.air').length, hand: document.querySelectorAll('.hand .slot').length, toast: document.querySelector('.toast')?.textContent ?? '' }));
         await p.page.mouse.click(box.x + 12, box.y + 22);
@@ -331,7 +331,7 @@ for (;;) {
     const hand = () => guest.page.evaluate(() => [...document.querySelectorAll('.hand .slot:not(.air)')].map((s) => s.getAttribute('aria-label')).join(' | '));
     const before = await hand();
     const onTable = await guest.page.evaluate(() => document.querySelectorAll('.trick .played').length);
-    if (onTable > 0 && before && !(await guest.page.evaluate(() => document.querySelector('.status.mine')))) {
+    if (onTable > 0 && before && !(await guest.page.evaluate(() => document.querySelector('.status.turn')))) {
       reloaded = true;
       await guest.page.reload({ waitUntil: 'load' });
       await guest.page.waitForSelector('.hand .slot', { timeout: 10000 });

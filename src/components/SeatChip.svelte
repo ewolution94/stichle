@@ -16,7 +16,16 @@
     player,
     me = false,
     compact = false,
-  }: { game: Game; seat: number; player: Player | undefined; me?: boolean; compact?: boolean } = $props();
+    showBid = true,
+  }: {
+    game: Game;
+    seat: number;
+    player: Player | undefined;
+    me?: boolean;
+    compact?: boolean;
+    /** The bid as pips on the card; the desktop table lays it on the felt as coins instead (BidCoins). */
+    showBid?: boolean;
+  } = $props();
 
   const bidValue = $derived(game.bids[seat]);
   const won = $derived(game.won[seat] ?? 0);
@@ -36,7 +45,9 @@
   <div class="info">
     <span class="name">{me ? t('you') : (player?.name ?? '?')}</span>
     <span class="line">
-      {#if bidValue === null}
+      {#if !showBid}
+        <!-- The bid lies on the felt beside the card (BidCoins.svelte). -->
+      {:else if bidValue === null}
         <!-- Your own bid is asked in its panel above your seat: no "bidding …" here as well. -->
         {#if active && game.stage === 'bid' && !me}<span class="bid wait">{t('bidding')}</span>
         {:else if game.bidIn[seat]}<span class="bid wait done" aria-label={t('bidDone')}>✓ {t('bidHidden')}</span>{/if}

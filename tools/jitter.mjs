@@ -54,7 +54,7 @@ await page.waitForSelector('.table');
 const snapshot = () => page.evaluate(() => ({
   round: document.querySelector('.round .display')?.textContent ?? '',
   status: document.querySelector('.status, .toast')?.textContent ?? '',
-  mine: Boolean(document.querySelector('.status.mine')),
+  mine: Boolean(document.querySelector('.status.turn')),
   hand: document.querySelectorAll('.hand .slot').length,
   trick: document.querySelectorAll('.trick .played').length,
   bid: Boolean(document.querySelector('.panel.bid')),

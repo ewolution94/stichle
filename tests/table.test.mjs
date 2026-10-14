@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { schedule, LENGTHS } from '../server/rules.mjs';
 // The page's own module, loaded through Node's type stripping (no build step).
-import { BEATS, scheduleFor, trickPhase } from '../src/lib/table.ts';
+import { BEATS, FLAT, flatLayout, orderHand, scheduleFor, trickPhase } from '../src/lib/table.ts';
 
 test("the page's schedule is the server's, for every table and length", () => {
   for (const players of [3, 4, 5, 6]) for (const length of LENGTHS) for (const specials of [false, true]) assert.deepEqual(scheduleFor(players, length, specials), schedule(players, length, specials), `${players} ${length} ${specials}`);
@@ -20,4 +20,24 @@ test("a trick's beats: rest, reveal, gather, sweep, gone, at either tempo", () =
   // The fast tempo's pause (server/game.mjs: 1500 ms) still leaves the rest before the winner shows.
   assert.equal(BEATS.fast.rest + BEATS.fast.reveal, 1500);
   assert.equal(BEATS.normal.rest + BEATS.normal.reveal, 2600);
+});
+
+test('the hand by strength: the Drache, the Wizards, trumps high to low, the rest high to low, the losers last', () => {
+  const dealt = ['dragon', 'z-air', 'water-3', 'water-11', 'fire-2', 'fire-13', 'earth-7', 'n-fire', 'fairy', 'thief'];
+  assert.deepEqual(orderHand(dealt, 'water', 'suit'), dealt);
+  assert.deepEqual(orderHand(dealt, 'water', 'strength'), ['dragon', 'z-air', 'water-11', 'water-3', 'fire-13', 'earth-7', 'fire-2', 'n-fire', 'fairy', 'thief']);
+  assert.deepEqual(orderHand(['fire-2', 'air-9'], null, 'strength'), ['air-9', 'fire-2']);
+});
+
+test('the flat hand: whole cards side by side while they fit, then an even overlap; one box height', () => {
+  const few = flatLayout(['a', 'b', 'c'], 1000);
+  assert.equal(few.cw, FLAT.max);
+  assert.equal(few.places.get('b').x - few.places.get('a').x, FLAT.max + FLAT.gap);
+  const many = flatLayout(Array.from({ length: 20 }, (_, i) => `c${i}`), 1000);
+  assert.equal(many.cw, FLAT.min);
+  assert.ok(many.places.get('c1').x - many.places.get('c0').x < FLAT.min);
+  assert.equal(few.height, many.height);
+  // The playable ones stand higher.
+  const raised = flatLayout(['a', 'b'], 1000, { raise: new Set(['b']) });
+  assert.equal(raised.places.get('a').y - raised.places.get('b').y, FLAT.raise);
 });

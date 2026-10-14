@@ -10,7 +10,8 @@
   import { fromId, nameOf, SUITS, type Suit } from '../lib/deck';
   import { errorText, i18n, t, suitName } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { angleOf, BEATS, slotOffset, trickCardWidth, trickPhase, twist } from '../lib/table';
+  import { angleOf, BEATS, orderHand, slotOffset, trickCardWidth, trickPhase, twist } from '../lib/table';
+  import { prefs } from '../lib/prefs.svelte';
   import { actAt } from '../lib/waits';
   import { askTilt } from '../lib/tilt';
   import Card from './Card.svelte';
@@ -20,6 +21,8 @@
   import RoundEnd from './RoundEnd.svelte';
   import ScorePad from './ScorePad.svelte';
   import SeatChip from './SeatChip.svelte';
+  import SortToggle from './SortToggle.svelte';
+  import BidCoins from './BidCoins.svelte';
   import Settings from './Settings.svelte';
   import Trick from './Trick.svelte';
 
@@ -93,6 +96,32 @@
     pick = next;
   }
 
+  // The desktop table (the user's pick C, 2026-10-14): from 1100 × 740 px. Phones and small windows
+  // keep the table below, unchanged; the logic above is the same for both.
+  const DESK = '(min-width: 1100px) and (min-height: 740px)';
+  let desk = $state(typeof matchMedia === 'function' && matchMedia(DESK).matches);
+  $effect(() => {
+    const mq = matchMedia(DESK);
+    const on = () => (desk = mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  });
+  /** The largest a card on the desktop table's pile may be. */
+  const DESK_CAP = 150;
+  /** The house rules this game plays with, for the desktop table's bar (only what isn't the original). */
+  const rules = $derived(
+    [
+      game.length !== 'full' ? t(`lengthTag_${game.length}`) : '',
+      game.tempo === 'fast' ? t('tempo_fast') : '',
+      game.bidding !== 'open' ? `${t('biddingRule')}: ${t(`bidding_${game.bidding}`)}` : '',
+      game.forehead ? t('forehead') : '',
+      game.specials ? t('specials') : '',
+    ].filter(Boolean),
+  );
+  /** The trick before, face down by the desktop table's edge once it has been swept off. */
+  const lastPile = $derived(game.lastTrick && !holding ? game.lastTrick : null);
+  const lastTaker = $derived(lastPile ? (lastPile.stolen ? (lastPile.cards.find((c) => c.card === 'thief')?.seat ?? lastPile.winner) : lastPile.winner) : -1);
+
   let trickW = $state(320);
   let trickH = $state(260);
   let trickEl: HTMLDivElement | undefined = $state();
@@ -101,7 +130,7 @@
   function target(card: string) {
     if (!trickEl || mine < 0) return null;
     const r = trickEl.getBoundingClientRect();
-    const width = trickCardWidth(r.width, r.height);
+    const width = trickCardWidth(r.width, r.height, desk ? DESK_CAP : undefined);
     const { dx, dy } = slotOffset(angleOf(mine, mine, n), width);
     return { x: r.left + r.width / 2 + dx, y: r.top + r.height / 2 + dy, rot: Number(twist(card, mine)), width };
   }
@@ -179,6 +208,160 @@
 
 </script>
 
+{#snippet notice()}
+  {#if error}
+    <p class="toast" role="alert">{error}</p>
+  {:else if status && !panelOpen}
+    <p class="status" class:turn={myTurn} aria-live="polite">{status}</p>
+  {/if}
+{/snippet}
+
+{#snippet panels()}
+  {#if deciding && game.stage === 'trump'}
+    <div class="panel sheet">
+      <span class="label">{t('pickTrump')}</span>
+      <div class="suits">
+        {#each SUITS as suit (suit)}
+          <button class="btn suitbtn" type="button" onclick={(e) => decide('trump', { suit }, e).catch(() => {})}>
+            <span class="suit {suit}" aria-hidden="true"></span>{suitName(suit)}
+          </button>
+        {/each}
+      </div>
+    </div>
+  {:else if deciding && game.stage === 'bid'}
+    <div class="panel sheet bid">
+      <span class="label">{t('yourBid')}</span>
+      {#if game.foreheads}<span class="brow-hint">{t('foreheadHint')}</span>{/if}
+      <div class="dial">
+        <button class="step" type="button" aria-label={t('bidLess')} disabled={pick <= 0} onclick={() => nudge(-1)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
+        </button>
+        <div class="value" role="status" aria-live="polite">
+          <!-- The number alone (the panel's label already asks for tricks); the word stays for screen readers. -->
+          {#key pick}<span class="big display {bump}">{pick}</span>{/key}
+          <span class="sr-only">{pick === 1 ? t('trickOne') : t('trickMany')}</span>
+        </div>
+        <button class="step" type="button" aria-label={t('bidMore')} disabled={pick >= game.round} onclick={() => nudge(1)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12" /></svg>
+        </button>
+      </div>
+      {#if pick === game.forbidden}
+        <span class="sofar no">{t('bidForbiddenHint', { n: game.round })}</span>
+      {:else if secret}
+        <span class="sofar">{t('bidSecretHint')}</span>
+      {:else}
+        <span class="sofar">{t('bidsSoFar', { sum: bidsSoFar, n: game.round })}</span>
+      {/if}
+      <button class="btn primary block" type="button" disabled={pick === game.forbidden} onclick={(e) => decide('bid', { n: pick }, e).catch(() => {})}>
+        {pick === game.forbidden ? t('bidForbidden', { n: pick }) : t('bidThis', { n: pick })}
+      </button>
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet hand(flat: boolean, keys: boolean)}
+  {#if mine >= 0 && game.hand}
+    <Hand
+      cards={orderHand(game.hand, game.trump, prefs.sort)}
+      legal={game.legal}
+      {canPlay}
+      onplay={(card) => act('play', { card })}
+      {target}
+      oninspect={inspect}
+      onrefuse={refused}
+      {flat}
+      {keys}
+    />
+  {:else}
+    <p class="watching">{t('watchingGame')}</p>
+  {/if}
+{/snippet}
+
+{#if desk}
+<div class="desk" class:my-turn={myTurn}>
+  <header class="desk-bar">
+    <span class="desk-round"><span class="label on-cloth">{t('round')}</span><b class="display">{game.no}<small>/{game.rounds}</small></b></span>
+    {#if rules.length}<span class="desk-rules">{rules.join(' · ')}</span>{/if}
+    <div class="tools">
+      {#if game.endsAt && game.phase === 'round'}<Clock {room} endsAt={game.endsAt} seconds={game.moveSeconds} mine={myTurn} />{/if}
+      <button class="tool" type="button" onclick={() => (padOpen = true)} aria-label={t('scorePad')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="1.5" /><path d="M8.5 8h7M8.5 12h7M8.5 16h4" /></svg>
+      </button>
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+      <ewo-settings-button onclick={() => (settingsOpen = true)}></ewo-settings-button>
+    </div>
+  </header>
+
+  <div class="desk-room">
+    <div class="felt desk-cloth">
+      <!-- The others across the far side, each bid lying as coins in front of them. -->
+      <div class="desk-seats" style:--count={others.length}>
+        {#each others as seat (seat)}
+          <div class="desk-seat">
+            <SeatChip {game} {seat} player={playerAt(seat)} showBid={false} />
+            <div class="desk-under">
+              <BidCoins bid={game.bids[seat]} won={game.won[seat] ?? 0} bidding={game.stage === 'bid' && game.waiting.includes(seat)} hidden={game.bidIn[seat] && game.bids[seat] === null} />
+              {#if game.foreheads?.[seat]}
+                <span class="desk-brow" aria-label={t('foreheadOf', { name: playerAt(seat)?.name ?? '', card: nameOf(fromId(game.foreheads[seat]), i18n.lang) })}><Card id={game.foreheads[seat]} /></span>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+
+      <!-- The deck and the turned trump, lying on the table as at a real one. -->
+      <button class="desk-deck" type="button" onclick={() => game.trumpCard && inspect(game.trumpCard)} aria-label={game.trump ? t('trumpIs', { suit: suitName(game.trump) }) : t('noTrump')}>
+        <span class="desk-pile">
+          <span class="c b1"><Card back /></span>
+          <span class="c b2"><Card back /></span>
+          {#if game.trumpCard}<span class="c turned"><Card id={game.trumpCard} /></span>{/if}
+        </span>
+        <span class="desk-tag">
+          {t('trump')} ·
+          {#if game.trump}<b><span class="suit {game.trump}" aria-hidden="true"></span>{suitName(game.trump)}</b>{:else if game.stage === 'trump'}<b>{t('trumpPending')}</b>{:else}<b>{t('noTrumpShort')}</b>{/if}
+        </span>
+      </button>
+
+      <div class="desk-middle" bind:this={trickEl}>
+        <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} tempo={game.tempo} {mine} {n} cap={DESK_CAP} bind:width={trickW} bind:height={trickH} />
+      </div>
+
+      <!-- The trick before, face down where it was swept; hover or focus to look at it. -->
+      <div class="desk-side">
+        {#if lastPile}
+          <button class="desk-last" type="button" aria-label={t('lastTrickOf', { name: lastTaker === mine ? t('you') : (playerAt(lastTaker)?.name ?? '') })}>
+            <span class="desk-pile small">
+              <span class="c b1"><Card back /></span>
+              <span class="c b2"><Card back /></span>
+            </span>
+            <span class="desk-tag">{t('lastTrick')} · <b>{lastPile.stolen ? t('stolenShort') : lastTaker === mine ? t('you') : (playerAt(lastTaker)?.name ?? '')}</b></span>
+            <span class="desk-peek" aria-hidden="true">
+              {#each lastPile.cards as played (played.card)}<span class="c" class:taker={played.seat === lastTaker}><Card id={played.card} /></span>{/each}
+            </span>
+          </button>
+        {/if}
+      </div>
+
+      <!-- You: your place card, your bid as coins, the order of your hand. -->
+      <div class="desk-me">
+        <span class="desk-sort">{#if mine >= 0 && game.hand && game.hand.length > 1}<SortToggle />{/if}</span>
+        {#if mine >= 0 || n > 0}<SeatChip {game} seat={home} player={playerAt(home)} me={mine >= 0} showBid={false} />{/if}
+        <BidCoins bid={game.bids[home]} won={game.won[home] ?? 0} bidding={game.stage === 'bid' && game.waiting.includes(home) && mine < 0} hidden={game.bidIn[home] && game.bids[home] === null} />
+      </div>
+
+      <div class="desk-hand">
+        {@render notice()}
+        {@render panels()}
+        {@render hand(prefs.hand === 'flat', true)}
+      </div>
+    </div>
+  </div>
+
+  {#if game.phase === 'scored'}
+    <RoundEnd {room} {view} />
+  {/if}
+</div>
+{:else}
 <div class="table" class:my-turn={myTurn}>
   <header class="top">
     <div class="round">
@@ -233,76 +416,24 @@
   </div>
 
   <div class="dock">
-    {#if error}
-      <p class="toast" role="alert">{error}</p>
-    {:else if status && !panelOpen}
-      <p class="status" class:mine={myTurn} aria-live="polite">{status}</p>
-    {/if}
+    {@render notice()}
 
-    {#if deciding && game.stage === 'trump'}
-      <div class="panel sheet">
-        <span class="label">{t('pickTrump')}</span>
-        <div class="suits">
-          {#each SUITS as suit (suit)}
-            <button class="btn suitbtn" type="button" onclick={(e) => decide('trump', { suit }, e).catch(() => {})}>
-              <span class="suit {suit}" aria-hidden="true"></span>{suitName(suit)}
-            </button>
-          {/each}
-        </div>
-      </div>
-    {:else if deciding && game.stage === 'bid'}
-      <div class="panel sheet bid">
-        <span class="label">{t('yourBid')}</span>
-        {#if game.foreheads}<span class="brow-hint">{t('foreheadHint')}</span>{/if}
-        <div class="dial">
-          <button class="step" type="button" aria-label={t('bidLess')} disabled={pick <= 0} onclick={() => nudge(-1)}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
-          </button>
-          <div class="value" role="status" aria-live="polite">
-            <!-- The number alone (the panel's label already asks for tricks); the word stays for screen readers. -->
-            {#key pick}<span class="big display {bump}">{pick}</span>{/key}
-            <span class="sr-only">{pick === 1 ? t('trickOne') : t('trickMany')}</span>
-          </div>
-          <button class="step" type="button" aria-label={t('bidMore')} disabled={pick >= game.round} onclick={() => nudge(1)}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12" /></svg>
-          </button>
-        </div>
-        {#if pick === game.forbidden}
-          <span class="sofar no">{t('bidForbiddenHint', { n: game.round })}</span>
-        {:else if secret}
-          <span class="sofar">{t('bidSecretHint')}</span>
-        {:else}
-          <span class="sofar">{t('bidsSoFar', { sum: bidsSoFar, n: game.round })}</span>
-        {/if}
-        <button class="btn primary block" type="button" disabled={pick === game.forbidden} onclick={(e) => decide('bid', { n: pick }, e).catch(() => {})}>
-          {pick === game.forbidden ? t('bidForbidden', { n: pick }) : t('bidThis', { n: pick })}
-        </button>
-      </div>
-    {/if}
+    {@render panels()}
 
     <div class="mine">
       {#if mine >= 0 || n > 0}<SeatChip {game} seat={home} player={playerAt(home)} me={mine >= 0} />{/if}
+      {#if mine >= 0 && game.hand && game.hand.length > 1}<span class="sorter"><SortToggle /></span>{/if}
     </div>
 
-    {#if mine >= 0 && game.hand}
-      <Hand
-        cards={game.hand}
-        legal={game.legal}
-        {canPlay}
-        onplay={(card) => act('play', { card })}
-        {target}
-        oninspect={inspect}
-        onrefuse={refused}
-      />
-    {:else}
-      <p class="watching">{t('watchingGame')}</p>
-    {/if}
+    {@render hand(false, false)}
   </div>
 
   {#if game.phase === 'scored'}
     <RoundEnd {room} {view} />
   {/if}
 </div>
+
+{/if}
 
 <Inspect card={inspecting} onclose={() => (inspecting = null)} />
 <ScorePad open={padOpen} {view} onclose={() => (padOpen = false)} />
@@ -541,7 +672,7 @@
     text-align: center;
     color: var(--on-cloth-2);
   }
-  .status.mine {
+  .status.turn {
     color: var(--gold-hi);
   }
   .toast {
@@ -676,12 +807,265 @@
     height: 14px;
   }
   .mine {
+    position: relative;
     display: flex;
     justify-content: center;
+  }
+  /* The hand's order, at the row's far end, just under the cloth's rail (never on its stitching) and
+     above the hand's own room: out of the way, and nothing moves when it shows. */
+  .sorter {
+    position: absolute;
+    right: 6px;
+    top: calc(100% - 14px);
   }
   .watching {
     margin: 10px 0 18px;
     text-align: center;
     color: var(--on-cloth-2);
+  }
+
+  /* ---------- The desktop table (the user's pick C, 2026-10-14) ----------
+     Its own class names, so nothing here reaches the phone's table above. The cloth keeps its edge
+     (app.css → .felt: each table's rail, studs or border), the room round it; a grid inside it keeps
+     every row one height, so nothing moves while you play. */
+  .desk {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-rows: 62px minmax(0, 1fr);
+    color: var(--on-cloth);
+  }
+  .desk-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 0 max(44px, calc((100vw - 1640px) / 2));
+    border-bottom: 1px solid rgb(236 230 214 / 0.12);
+  }
+  .desk-round {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .desk-round b {
+    font-size: 27px;
+    font-weight: 400;
+    line-height: 1;
+  }
+  .desk-round small {
+    font-size: 15px;
+    color: var(--on-cloth-2);
+  }
+  .desk-rules {
+    font-size: 13px;
+    color: var(--on-cloth-2);
+  }
+  .desk-room {
+    min-height: 0;
+    display: flex;
+    padding: 32px max(48px, calc((100vw - 1640px) / 2)) 30px;
+  }
+  .desk-cloth {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr) 230px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding: 26px 26px 6px;
+  }
+  /* The others across the far side. */
+  .desk-seats {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+    justify-items: center;
+  }
+  .desk-seat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .desk-seat :global(.seat) {
+    min-width: 150px;
+  }
+  .desk-under {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+  }
+  .desk-brow {
+    position: absolute;
+    z-index: 1;
+    top: 30px;
+    left: 50%;
+    width: 58px;
+    margin-left: -29px;
+    rotate: -4deg;
+    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.5));
+  }
+  /* The deck with the trump turned up, and the last trick: lying on the cloth, left and right. */
+  .desk-deck,
+  .desk-last {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+  }
+  .desk-deck {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    justify-self: center;
+  }
+  .desk-side {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: center;
+    justify-self: center;
+  }
+  .desk-pile {
+    position: relative;
+    display: block;
+    width: 160px;
+    height: 136px;
+  }
+  .desk-pile .c {
+    position: absolute;
+    display: block;
+    width: 88px;
+    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.45));
+  }
+  .desk-pile .b1 {
+    left: 4px;
+    top: 6px;
+    rotate: -5deg;
+  }
+  .desk-pile .b2 {
+    left: 8px;
+    top: 0;
+    rotate: -2deg;
+  }
+  .desk-pile .turned {
+    left: 66px;
+    top: 16px;
+    rotate: 12deg;
+  }
+  .desk-pile.small {
+    width: 124px;
+  }
+  .desk-pile.small .b1 {
+    left: 16px;
+    rotate: 8deg;
+  }
+  .desk-pile.small .b2 {
+    left: 20px;
+    rotate: -3deg;
+  }
+  .desk-tag {
+    font: 650 11px/1.3 var(--ewo-sans);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--on-cloth-2);
+    text-align: center;
+  }
+  .desk-tag b {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--on-cloth);
+    font-weight: 650;
+  }
+  .desk-tag .suit {
+    width: 10px;
+    height: 10px;
+  }
+  .desk-tag .suit.fire {
+    color: var(--fire-lum);
+  }
+  .desk-tag .suit.water {
+    color: var(--water-lum);
+  }
+  .desk-tag .suit.earth {
+    color: var(--earth-lum);
+  }
+  .desk-tag .suit.air {
+    color: var(--air-lum);
+  }
+  .desk-last {
+    position: relative;
+  }
+  .desk-peek {
+    position: absolute;
+    z-index: 20;
+    bottom: calc(100% + 8px);
+    right: -12px;
+    display: flex;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 14px;
+    background: rgb(18 11 7 / 0.84);
+    box-shadow: 0 18px 30px -16px rgb(0 0 0 / 0.9);
+    opacity: 0;
+    translate: 0 6px;
+    pointer-events: none;
+    transition:
+      opacity 0.2s,
+      translate 0.2s;
+  }
+  .desk-peek .c {
+    display: block;
+    width: 62px;
+  }
+  .desk-peek .c.taker {
+    outline: 2px solid var(--gold-hi);
+    outline-offset: 1px;
+    border-radius: 5px;
+  }
+  .desk-last:hover .desk-peek,
+  .desk-last:focus-visible .desk-peek {
+    opacity: 1;
+    translate: 0 0;
+  }
+  .desk-middle {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    min-height: 0;
+  }
+  /* You: at the near edge, on the left of your hand. */
+  .desk-me {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: end;
+    justify-self: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: 12px;
+    width: 210px;
+    height: 180px;
+    padding: 0 0 34px 6px;
+    box-sizing: border-box;
+  }
+  /* The sort button's place is kept whether it shows or not: your place card never moves. */
+  .desk-sort {
+    display: block;
+    height: 32px;
+  }
+  .desk-hand {
+    grid-column: 2;
+    grid-row: 3;
+    position: relative;
+    z-index: 5;
   }
 </style>

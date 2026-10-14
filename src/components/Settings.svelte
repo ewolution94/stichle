@@ -11,7 +11,7 @@
   import { ApiError } from '../lib/api';
   import { errorText, i18n, setLanguage, systemLang, t, type LangChoice } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { prefs, setArt } from '../lib/prefs.svelte';
+  import { prefs, setArt, setHand, type HandLayout } from '../lib/prefs.svelte';
   import type { Art } from '../lib/deck';
   import { play, setSound, sound } from '../lib/sound.svelte';
   import { earnedCount, profile } from '../lib/profile.svelte';
@@ -79,6 +79,15 @@
     if (shows === i18n.lang) setLanguage(next);
     else themeShift(() => setLanguage(next));
   }
+
+  // Whether this is the desktop table (Table.svelte → DESK): only there is the hand's layout a choice.
+  let desk = $state(typeof matchMedia === 'function' && matchMedia('(min-width: 1100px) and (min-height: 740px)').matches);
+  $effect(() => {
+    const mq = matchMedia('(min-width: 1100px) and (min-height: 740px)');
+    const on = () => (desk = mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  });
 </script>
 
 <ewo-sheet {open} label={t('settings')} oncancel={onclose} onclose={closed}>
@@ -147,6 +156,16 @@
           <option value="classic">{t('art_classic')}</option>
         </ewo-segmented>
       </div>
+      {#if desk}
+        <!-- The desktop table only (the user, 2026-10-14): the hand laid out flat, or the phone's fan. -->
+        <div class="row">
+          <span class="name">{t('handLayout')}</span>
+          <ewo-segmented stretch value={prefs.hand} label={t('handLayout')} onchange={(e) => setHand(e.detail.value as HandLayout)}>
+            <option value="flat">{t('hand_flat')}</option>
+            <option value="fan">{t('hand_fan')}</option>
+          </ewo-segmented>
+        </div>
+      {/if}
       <div class="row">
         <span class="name">{t('soundsHint')}</span>
         <ewo-switch

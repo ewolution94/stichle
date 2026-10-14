@@ -77,3 +77,51 @@ export const slotOffset = (angle: number, cardWidth: number) => trickSlot(angle,
 
 /** Off the table towards a seat: where a taken trick sweeps to. */
 export const sweepOffset = (angle: number, w: number, h: number) => sweepTo(angle, w, h);
+
+/**
+ * Your hand in the order you chose (the sort button, 2026-10-14): `suit` as the server deals it (the
+ * Drache and the Wizards, the trump suit, the others, each rising; Jesters, the Fee and the Dieb last);
+ * `strength` strongest first across the suits: the Drache, the Wizards, trumps high to low, the other
+ * suits high to low, then the cards that never take a trick. Ties keep the suit order.
+ */
+export function orderHand(cards: string[], trump: string | null, mode: 'suit' | 'strength'): string[] {
+  if (mode !== 'strength') return cards;
+  const worth = (id: string) => {
+    if (id === 'dragon') return 200;
+    if (id.startsWith('z-')) return 150;
+    if (id.startsWith('n-') || id === 'fairy' || id === 'thief') return 0;
+    const [suit, v] = id.split('-');
+    return (suit === trump ? 100 : 0) + Number(v);
+  };
+  return cards
+    .map((id, i) => ({ id, i }))
+    .sort((a, b) => worth(b.id) - worth(a.id) || a.i - b.i)
+    .map((e) => e.id);
+}
+
+/** The flat hand's measures (the desktop table, 2026-10-14). */
+export const FLAT = { max: 132, min: 76, gap: 14, top: 34, bottom: 34, raise: 16 };
+
+/**
+ * The hand laid out flat (the desktop table's default): side by side, every card whole and upright,
+ * as big as the width allows (up to FLAT.max); when even FLAT.min doesn't fit, they overlap evenly.
+ * The cards you may play now (`raise`) stand a little higher. Same shape as the kit's fanLayout, so
+ * its gestures (tap, drag, flick, hold) and flights work unchanged. `boxH` keeps the box one height
+ * whatever the hand: the cards sit at its foot, the number keys under them.
+ */
+export function flatLayout(cards: string[], width: number, { raise = new Set<string>(), boxH = FLAT.top + Math.round(FLAT.max * 1.4) + FLAT.bottom } = {}) {
+  const n = cards.length;
+  const usable = Math.max(0, width - 8);
+  let cw = n ? Math.min(FLAT.max, Math.floor((usable - FLAT.gap * (n - 1)) / n)) : FLAT.max;
+  let step = cw + FLAT.gap;
+  if (cw < FLAT.min) {
+    cw = FLAT.min;
+    step = n > 1 ? (usable - cw) / (n - 1) : 0;
+  }
+  const ch = Math.round(cw * 1.4);
+  const x0 = (width - (cw + step * (n - 1))) / 2;
+  const foot = boxH - FLAT.bottom - ch;
+  const places = new Map<string, { x: number; y: number; r: number; z: number; row: number }>();
+  cards.forEach((card, i) => places.set(card, { x: x0 + i * step, y: foot - (raise.has(card) ? FLAT.raise : 0), r: 0, z: i + 1, row: 0 }));
+  return { cw, ch, rows: 1 as const, height: boxH, lift: 20, places };
+}
