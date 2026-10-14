@@ -7,6 +7,7 @@
   import type { View } from '../lib/api';
   import type { Room } from '../lib/room.svelte';
   import { play, unlockOnGesture } from '../lib/sound.svelte';
+  import { BEATS } from '../lib/table';
 
   let { room }: { room: Room } = $props();
 
@@ -30,8 +31,8 @@
     }
     if (g.lastTrick && g.lastTrick.n !== pg.lastTrick?.n) {
       const yours = g.lastTrick.winner === mine;
-      // With the winner's reveal on the table (src/lib/table.ts → TRICK_REVEAL: 700 ms after the last card).
-      setTimeout(() => (yours ? play.won() : play.lost()), 700);
+      // With the winner's reveal on the table (src/lib/table.ts → BEATS: 700 ms after the last card, 350 at the fast tempo).
+      setTimeout(() => (yours ? play.won() : play.lost()), (BEATS[g.tempo] ?? BEATS.normal).rest);
     }
     const myMove = g.phase === 'round' && g.stage !== 'done' && g.turn === mine;
     const wasMine = pg.phase === 'round' && pg.stage !== 'done' && pg.turn === mine && pg.stage === g.stage;

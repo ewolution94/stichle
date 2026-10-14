@@ -10,9 +10,16 @@ export type Bidding = 'open' | 'uneven' | 'secret';
 /** A card id: "fire-7", "z-water" (a Wizard), "n-air" (a Jester). */
 export type CardId = string;
 
+/** How long a game is (R3): every round, every other one (1, 3, 5 …), or the first half. */
+export type Length = 'full' | 'half' | 'short';
+/** The table's pace (R3): the trick's pause and the bots' thinking, at leisure or quicker. */
+export type Tempo = 'normal' | 'fast';
+
 export interface Settings {
   clock: ClockChoice;
   bidding: Bidding;
+  length: Length;
+  tempo: Tempo;
 }
 
 export interface Player {
@@ -40,7 +47,12 @@ export interface FinishedTrick extends Trick {
 }
 
 export interface PadRow {
+  /** Which round of the game (1 …). */
+  no: number;
+  /** The cards it dealt (the same as `no` in a full game). */
   round: number;
+  /** The last round of a full game. */
+  final: boolean;
   dealer: number;
   trump: Suit | null;
   trumpCard: CardId | null;
@@ -58,7 +70,11 @@ export interface Game {
   /** Seats whose player has left (the bot plays for them). */
   gone: boolean[];
   rounds: number;
+  /** Which round this is (1 …); `round` is the cards it deals (they differ in a half game). */
+  no: number;
   round: number;
+  length: Length;
+  tempo: Tempo;
   dealer: number;
   /** round: the cards are out · scored: the round's result · final: the game is over */
   phase: 'round' | 'scored' | 'final';
@@ -125,6 +141,8 @@ export interface Config {
   clocks: ClockChoice[];
   moveSeconds: Record<string, number>;
   biddings: Bidding[];
+  lengths: Length[];
+  tempos: Tempo[];
   seats: { min: number; max: number };
 }
 

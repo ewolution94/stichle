@@ -49,7 +49,8 @@
         countRound(profile, key, {
           bid: row.bids[mine],
           won: row.won[mine],
-          last: row.round === g.rounds,
+          // The last round of a full game (R3: a half or short game's last round is smaller).
+          last: row.final ?? row.round === g.rounds,
           wizards: dealt.get(`${base}:${row.round}`) ?? null,
         }),
       );
@@ -65,6 +66,7 @@
           bids: g.pad.map((row) => row.bids),
           won: g.pad.map((row) => row.won),
           players: g.seats.length,
+          full: (g.length ?? 'full') === 'full',
         }),
       );
     }

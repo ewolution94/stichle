@@ -10,6 +10,7 @@
   import { errorText, t } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
   import { saveAvatar } from '../lib/session';
+  import { scheduleFor } from '../lib/table';
   import { actAt } from '../lib/waits';
   import Avatar from './Avatar.svelte';
   import AvatarMaker from './AvatarMaker.svelte';
@@ -43,7 +44,9 @@
   const watching = $derived(view.players.filter((p) => !view.order.includes(p.id)));
   const amSeated = $derived(view.me !== null && view.order.includes(view.me));
   const menuPlayer = $derived(view.players.find((p) => p.id === menuFor) ?? null);
-  const rounds = $derived(seated.length >= MIN && seated.length <= MAX ? 60 / seated.length : 0);
+  /** The cards of each round at this table and length (R3): what the length's hint names. */
+  const plan = $derived(seated.length >= MIN && seated.length <= MAX ? scheduleFor(seated.length, settings.length ?? 'full') : []);
+  const rounds = $derived(plan.length);
   const blocker = $derived(seated.length < MIN ? t('needPlayers', { n: MIN - seated.length }) : '');
 
   const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -219,6 +222,31 @@
         <b>{t(`bidding_${settings.bidding}`)}</b>
       {/if}
       <span class="hint">{t(`biddingHint_${settings.bidding}`)}</span>
+    </div>
+    <div class="setting">
+      <span class="label">{t('gameLength')}</span>
+      {#if isHost}
+        <ewo-segmented stretch value={settings.length ?? 'full'} label={t('gameLength')} onchange={(e) => change({ length: e.detail.value as Settings['length'] })}>
+          <option value="full">{t('length_full')}</option>
+          <option value="half">{t('length_half')}</option>
+          <option value="short">{t('length_short')}</option>
+        </ewo-segmented>
+      {:else}
+        <b>{t(`length_${settings.length ?? 'full'}`)}</b>
+      {/if}
+      <span class="hint">{plan.length ? t(`lengthHint_${settings.length ?? 'full'}`, { last: plan.at(-1) ?? 0 }) : t(`lengthAbout_${settings.length ?? 'full'}`)}</span>
+    </div>
+    <div class="setting">
+      <span class="label">{t('tempo')}</span>
+      {#if isHost}
+        <ewo-segmented stretch value={settings.tempo ?? 'normal'} label={t('tempo')} onchange={(e) => change({ tempo: e.detail.value as Settings['tempo'] })}>
+          <option value="normal">{t('tempo_normal')}</option>
+          <option value="fast">{t('tempo_fast')}</option>
+        </ewo-segmented>
+      {:else}
+        <b>{t(`tempo_${settings.tempo ?? 'normal'}`)}</b>
+      {/if}
+      <span class="hint">{t(`tempoHint_${settings.tempo ?? 'normal'}`)}</span>
     </div>
     <p class="length">{rounds ? t('lengthHint', { players: seated.length, rounds }) : t('lengthNone', { min: MIN, max: MAX })}</p>
   </section>

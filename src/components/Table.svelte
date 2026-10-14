@@ -10,7 +10,7 @@
   import { fromId, SUITS, type Suit } from '../lib/deck';
   import { errorText, t, suitName } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { angleOf, slotOffset, trickCardWidth, trickPhase, twist, TRICK_REVEAL } from '../lib/table';
+  import { angleOf, BEATS, slotOffset, trickCardWidth, trickPhase, twist } from '../lib/table';
   import { actAt } from '../lib/waits';
   import { askTilt } from '../lib/tilt';
   import Card from './Card.svelte';
@@ -47,7 +47,7 @@
     // and the hand never played (the user, 2026-10-13: "the game locks up"; tools/jitter.mjs).
     now = Date.now();
     if (wait <= 0) return;
-    const timers = [wait - TRICK_REVEAL, wait].filter((ms) => ms > 0).map((ms) => setTimeout(() => (now = Date.now()), ms + 30));
+    const timers = [wait - (BEATS[game.tempo] ?? BEATS.normal).reveal, wait].filter((ms) => ms > 0).map((ms) => setTimeout(() => (now = Date.now()), ms + 30));
     return () => timers.forEach(clearTimeout);
   });
   const holding = $derived(room.left(game.holdUntil, now) > 0);
@@ -57,7 +57,7 @@
     const tick = setInterval(() => (now = Date.now()), 400);
     return () => clearInterval(tick);
   });
-  const revealed = $derived(trickPhase(room.left(game.holdUntil, now)) !== 'rest');
+  const revealed = $derived(trickPhase(room.left(game.holdUntil, now), game.tempo) !== 'rest');
   const canPlay = $derived(myTurn && game.stage === 'play' && !holding);
 
   // The suit to follow, for the hint (the same rule as the server's: the first card that isn't a Jester).
@@ -177,7 +177,7 @@
   <header class="top">
     <div class="round">
       <span class="label on-cloth">{t('round')}</span>
-      <span class="display">{game.round}<small>/{game.rounds}</small></span>
+      <span class="display">{game.no}<small>/{game.rounds}</small></span>
     </div>
     <button class="trump" type="button" onclick={() => game.trumpCard && inspect(game.trumpCard)} aria-label={game.trump ? t('trumpIs', { suit: suitName(game.trump) }) : t('noTrump')}>
       <span class="mini">
@@ -217,7 +217,7 @@
   </div>
 
   <div class="middle" bind:this={trickEl}>
-    <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} {mine} {n} bind:width={trickW} bind:height={trickH} />
+    <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} tempo={game.tempo} {mine} {n} bind:width={trickW} bind:height={trickH} />
   </div>
   </div>
 

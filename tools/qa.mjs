@@ -6,7 +6,8 @@
 //
 //   npm run build && node server/server.mjs --port 6311     (or the stichle-prod preview)
 //   node tools/qa.mjs [base] [outdir]          ROUNDS=3 W=390 H=844 by default
-//   CLOCK=quick (a clock per move), SLOWFONT=2000 (the display face arrives late), BIDDING=secret
+//   CLOCK=quick (a clock per move), SLOWFONT=2000 (the display face arrives late), BIDDING=secret,
+//   LENGTH=half|short, TEMPO=fast
 import { webkit } from '../../folio/node_modules/playwright/index.mjs';
 import { mkdirSync } from 'node:fs';
 
@@ -17,6 +18,9 @@ const ROUNDS = Number(process.env.ROUNDS ?? 3);
 const BIDDING = process.env.BIDDING ?? 'open';
 /** The clock per move: off, relaxed or quick. */
 const CLOCK = process.env.CLOCK ?? 'off';
+/** The length (full, half, short) and the pace (normal, fast), R3. */
+const LENGTH = process.env.LENGTH ?? 'full';
+const TEMPO = process.env.TEMPO ?? 'normal';
 /** Hold the display face back this many ms, so the page starts in the fallback (a slow phone). */
 const SLOWFONT = Number(process.env.SLOWFONT ?? 0);
 const W = Number(process.env.W ?? 390), H = Number(process.env.H ?? 844);
@@ -34,6 +38,35 @@ async function person(name) {
       // The how-to opens on a first visit (Guide.svelte); these players have read it.
       localStorage.setItem('stichle:guide', '1');
     } catch {}
+    // Every press, for the stall report: what it landed on, and whether that's inside the hand.
+    window.__downs = [];
+    document.addEventListener('pointerdown', (e) => {
+      const t = e.target;
+      window.__downs.push(`${Math.round(e.clientX)},${Math.round(e.clientY)} ${t?.tagName?.toLowerCase()}.${t?.classList ? [...t.classList].join('.') : ''} hand:${Boolean(t?.closest?.('.hand'))} slot:${t?.closest?.('.slot')?.getAttribute('aria-label') ?? '-'}`);
+      if (window.__downs.length > 12) window.__downs.shift();
+    }, true);
+    // The stream, watched: what each page has heard, for the stall report below.
+    window.__es = { opens: 0, views: 0, pings: 0, errors: 0, last: 0, lastView: '' };
+    const Native = window.EventSource;
+    window.EventSource = class extends Native {
+      constructor(url, init) {
+        super(url, init);
+        window.__es.opens++;
+        this.addEventListener('view', (e) => {
+          window.__es.views++;
+          window.__es.last = Date.now();
+          try {
+            const v = JSON.parse(e.data);
+            window.__es.lastView = v.game ? `no ${v.game.no} stage ${v.game.stage} turn ${v.game.turn} trick ${v.game.trick?.cards?.length}` : v.phase;
+          } catch {}
+        });
+        this.addEventListener('ping', () => {
+          window.__es.pings++;
+          window.__es.last = Date.now();
+        });
+        this.addEventListener('error', () => window.__es.errors++);
+      }
+    };
     // The table never changes size or place while you play (the user, 2026-10-13: "it cannot jump"):
     // every frame, the cloth, the trick's area, your place card and your hand's box are measured, and
     // any move is written down with what the status line said.
@@ -127,7 +160,7 @@ if (process.env.SCREEN) {
   screen = { name: 'screen', context, page };
 }
 await api(host.page, `/api/rooms/${seat.code}/bot`, { add: true }, seat.token);
-await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING, clock: CLOCK }, seat.token);
+await api(host.page, `/api/rooms/${seat.code}/settings`, { bidding: BIDDING, clock: CLOCK, length: LENGTH, tempo: TEMPO }, seat.token);
 await snap(host, 'lobby');
 await snap(guest, 'lobby');
 await host.page.getByRole('button', { name: 'Karten geben' }).click();
@@ -208,16 +241,84 @@ async function act(p) {
     if (!box) return false;
     await p.page.mouse.click(box.x, box.y);
     await p.page.waitForTimeout(120);
-    await p.page.mouse.click(box.x, box.y - 24);
+    // The second tap goes where the lifted card now is, as a person's would. A fixed 24 px up missed
+    // a card tilted to the left and landed beside the hand, which drops the lift (2026-10-14).
+    const lifted = await p.page.locator('.hand .slot.lifted').first().boundingBox().catch(() => null);
+    if (lifted) await p.page.mouse.click(lifted.x + lifted.width / 2, lifted.y + lifted.height / 2);
+    else await p.page.mouse.click(box.x, box.y - 24);
     return true;
   }
   return false;
 }
 
 let reloaded = false;
-for (let i = 0; i < 2000; i++) {
-  const r = Number((await round(host)).split('/')[0]) || 0;
-  if (r > ROUNDS || (await phaseOf(host)) === 'final') break;
+// A time limit, not a count of steps: during a trick's pause a refused tap is a step too, and at the
+// fast tempo two thousand of them ran out in round 2 (2026-10-14).
+const deadline = Date.now() + 30 * 60_000;
+let stillKey = '';
+let stillSince = Date.now();
+for (;;) {
+  if (Date.now() > deadline) {
+    problems.push(`no end after 30 min, at round "${await round(host)}"`);
+    break;
+  }
+  const label = await round(host);
+  const r = Number(label.split('/')[0]) || 0;
+  // A stall: nothing on either page changes for 45 s. Say what each page shows and has heard, then stop.
+  const now = JSON.stringify(await Promise.all([host, guest].map((p) => p.page.evaluate(() => [document.querySelector('.status, .toast')?.textContent, document.querySelectorAll('.hand .slot').length, document.querySelectorAll('.trick .played').length, document.querySelector('.round .display')?.textContent]))));
+  if (now !== stillKey) {
+    stillKey = now;
+    stillSince = Date.now();
+  } else if (Date.now() - stillSince > 45_000) {
+    for (const p of [host, guest]) {
+      const d = await p.page.evaluate(() => ({
+        status: document.querySelector('.status, .toast')?.textContent ?? '',
+        pill: document.querySelector('ewo-connection')?.getAttribute('state') ?? '',
+        pending: Boolean(document.querySelector('[data-pending]')),
+        hand: document.querySelectorAll('.hand .slot').length,
+        lifted: document.querySelectorAll('.hand .slot.lifted').length,
+        dim: document.querySelectorAll('.hand .slot.dim').length,
+        // A card still in the air keeps the hand's gestures off; aria-disabled says the page won't play.
+        air: document.querySelectorAll('.hand .slot.air').length,
+        disabled: document.querySelectorAll('.hand .slot[aria-disabled="true"]').length,
+        trick: [...document.querySelectorAll('.trick .played')].map((el) => `${el.className.replace(/svelte-\S+/g, '').trim()} op ${getComputedStyle(el).opacity}`),
+        // What a tap on the first card would hit.
+        under: (() => {
+          const el = document.querySelector('.hand .slot');
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          const hit = document.elementFromPoint(r.left + 12, r.top + 22);
+          return hit ? `${hit.tagName.toLowerCase()}.${[...hit.classList].join('.')} in ${hit.closest('.trick') ? 'trick' : hit.closest('.hand') ? 'hand' : 'elsewhere'}` : null;
+        })(),
+        slots: [...document.querySelectorAll('.hand .slot')].map((el) => `${el.getAttribute('aria-label')}${el.classList.contains('air') ? ' (air)' : ''} ${el.style.transform.slice(0, 40)}`),
+        stream: { ...window.__es, since: Math.round((Date.now() - window.__es.last) / 1000) },
+      }));
+      problems.push(`${p.name} stalled 45 s: ${JSON.stringify(d)}`);
+      // On the page whose move it is: tap the first card twice, then try the keyboard, and say what happened.
+      if (d.status && (await p.page.locator('.status.mine').count())) {
+        const box = await p.page.locator('.hand .slot').first().boundingBox();
+        const state = () => p.page.evaluate(() => ({ lifted: document.querySelectorAll('.hand .slot.lifted').length, air: document.querySelectorAll('.hand .slot.air').length, hand: document.querySelectorAll('.hand .slot').length, toast: document.querySelector('.toast')?.textContent ?? '' }));
+        await p.page.mouse.click(box.x + 12, box.y + 22);
+        await p.page.waitForTimeout(250);
+        const one = await state();
+        await p.page.mouse.click(box.x + 12, box.y - 2);
+        await p.page.waitForTimeout(900);
+        const two = await state();
+        await p.page.locator('.hand .slot').first().focus();
+        await p.page.keyboard.press('Enter');
+        await p.page.waitForTimeout(900);
+        const key = await state();
+        problems.push(`${p.name} taps at the stall: after one ${JSON.stringify(one)}, after two ${JSON.stringify(two)}, after Enter ${JSON.stringify(key)}`);
+        problems.push(`${p.name} presses: ${JSON.stringify(await p.page.evaluate(() => window.__downs))}`);
+        problems.push(`${p.name} hand box: ${JSON.stringify(await p.page.evaluate(() => { const r = document.querySelector('.hand').getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round); }))}`);
+      }
+    }
+    break;
+  }
+  if (r > ROUNDS || (await phaseOf(host)) === 'final') {
+    say(`played to round "${label}" (${r > ROUNDS ? `past ROUNDS=${ROUNDS}` : 'the final'})`);
+    break;
+  }
   let moved = false;
   for (const p of [host, guest]) moved = (await act(p).catch((e) => (problems.push(`${p.name} act: ${e.message}`), false))) || moved;
   // Once, in round 2 with cards on the table: the guest reloads mid-trick and must get the same hand back.

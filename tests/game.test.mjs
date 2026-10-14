@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AWAY_MS, GameError, ROUND_WAIT, TRICK_PAUSE } from '../server/game.mjs';
+import { AWAY_MS, GameError, ROUND_WAIT, TRICK_PAUSE, TRICK_PAUSE_FAST } from '../server/game.mjs';
 import { room, setup, turnOf, watch } from './helpers.mjs';
 
 // The room around the rules (server/rules.mjs has its own tests): seats, the flow of rounds, what
@@ -176,6 +176,9 @@ test('bots play whole games with a human who always passes the move on, to the f
     assert.equal(v.game.pad.length, 60 / players);
     // Every round's tricks add up to its number of cards.
     for (const row of v.game.pad) assert.equal(row.won.reduce((a, b) => a + b, 0), row.round);
+    // A full game: the rounds are its cards, and only the last one is the final.
+    assert.deepEqual(v.game.pad.map((row) => row.no), v.game.pad.map((row) => row.round));
+    assert.deepEqual(v.game.pad.map((row) => row.final), v.game.pad.map((_, i) => i === v.game.pad.length - 1));
     assert.deepEqual(v.game.totals, v.game.seats.map((_, i) => v.game.pad.reduce((s, row) => s + row.points[i], 0)));
     games.close();
   }
@@ -352,4 +355,86 @@ test('the bidding rule is a setting the host picks, and stays fixed for the game
   r.act(r.host, 'start');
   assert.equal(code(() => r.act(r.host, 'settings', { bidding: 'secret' })), 'wrong-phase');
   assert.equal(r.pages[0].view.game.bidding, 'uneven');
+});
+
+/** Plays a host with two bots to the final, the host passing every move on (as the bots test). */
+function playToFinal(r, clock) {
+  let guard = 0;
+  while (r.pages[0].view.phase === 'play' && guard++ < 20000) {
+    const g = r.pages[0].view.game;
+    const me = g.seats.indexOf(r.host.player);
+    if (g.phase === 'scored') r.act(r.host, 'next');
+    else if (g.phase === 'round' && g.stage !== 'done' && g.turn === me) {
+      if (g.stage === 'trump') r.act(r.host, 'trump', { suit: 'air' });
+      else if (g.stage === 'bid') r.act(r.host, 'bid', { n: 0 });
+      else if (g.legal.length && clock.now() >= g.holdUntil) r.act(r.host, 'play', { card: g.legal[0] });
+      else clock.advance(500);
+    } else clock.advance(500);
+  }
+  return r.pages[0].view;
+}
+
+test('the length: a half game deals every other round, a short one the first half; rounds and cards come apart', () => {
+  for (const [length, cards] of [
+    ['half', [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]],
+    ['short', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]],
+  ]) {
+    const { games, clock } = setup(23);
+    const r = room(games, 0);
+    r.act(r.host, 'bot', { add: true });
+    r.act(r.host, 'bot', { add: true });
+    r.act(r.host, 'settings', { length });
+    r.act(r.host, 'start');
+    const first = r.pages[0].view.game;
+    assert.equal(first.length, length);
+    assert.equal(first.rounds, 10);
+    assert.equal(first.no, 1);
+    const v = playToFinal(r, clock);
+    assert.equal(v.phase, 'final', length);
+    assert.deepEqual(v.game.pad.map((row) => row.round), cards, length);
+    assert.deepEqual(v.game.pad.map((row) => row.no), cards.map((_, i) => i + 1));
+    for (const row of v.game.pad) assert.equal(row.won.reduce((a, b) => a + b, 0), row.round);
+    // Only a full game has a final round (the achievements' "lastRound").
+    assert.ok(v.game.pad.every((row) => !row.final));
+    games.close();
+  }
+});
+
+test('the fast tempo: a finished trick holds the table for the shorter pause, then the game goes on', () => {
+  const { games, clock } = setup(11);
+  const r = room(games, 2);
+  r.act(r.host, 'settings', { tempo: 'fast' });
+  r.act(r.host, 'start');
+  assert.equal(r.pages[0].view.game.tempo, 'fast');
+  while (r.pages[0].view.game.round === 1) {
+    const g = r.pages[0].view.game;
+    if (g.phase === 'scored') for (const seat of r.seats) r.act(seat, 'next');
+    else if (g.stage === 'done') clock.advance(TRICK_PAUSE_FAST);
+    else move(r);
+  }
+  while (r.pages[0].view.game.stage !== 'play') move(r);
+  for (let i = 0; i < 3; i++) move(r);
+  const g = r.pages[0].view.game;
+  assert.equal(g.lastTrick.n, 1);
+  assert.equal(g.holdUntil - clock.now(), TRICK_PAUSE_FAST);
+  const leader = r.seats[turnOf(r)];
+  const card = r.pages[turnOf(r)].view.game.legal[0];
+  assert.equal(code(() => r.act(leader, 'play', { card })), 'wait');
+  clock.advance(TRICK_PAUSE_FAST);
+  r.act(leader, 'play', { card });
+  assert.equal(r.pages[0].view.game.trick.cards.length, 1);
+});
+
+test('length and tempo are settings the host picks; anything else is ignored', () => {
+  const { games } = setup(3);
+  const r = room(games, 2);
+  assert.equal(r.pages[0].view.settings.length, 'full');
+  assert.equal(r.pages[0].view.settings.tempo, 'normal');
+  r.act(r.host, 'settings', { length: 'short', tempo: 'fast' });
+  assert.equal(r.pages[1].view.settings.length, 'short');
+  assert.equal(r.pages[1].view.settings.tempo, 'fast');
+  r.act(r.host, 'settings', { length: 'forever', tempo: 'warp' });
+  assert.equal(r.pages[0].view.settings.length, 'short');
+  assert.equal(r.pages[0].view.settings.tempo, 'fast');
+  assert.equal(code(() => r.act(r.seats[1], 'settings', { length: 'full' })), 'not-host');
 });

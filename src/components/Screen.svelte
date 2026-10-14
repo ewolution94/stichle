@@ -79,7 +79,7 @@
     <Logo />
     <span class="code">{code}</span>
     {#if game && view?.phase === 'play'}
-      <span class="round"><span class="label on-cloth">{t('round')}</span><b class="display">{game.round}<small>/{game.rounds}</small></b></span>
+      <span class="round"><span class="label on-cloth">{t('round')}</span><b class="display">{game.no}<small>/{game.rounds}</small></b></span>
       <span class="trump">
         <span class="mini">{#if game.trumpCard}<Card id={game.trumpCard} />{:else}<span class="none"></span>{/if}</span>
         <span><span class="label on-cloth">{t('trump')}</span><b class="display">{#if game.trump}<span class="suit {game.trump}"></span>{suitName(game.trump)}{:else}{t('noTrumpShort')}{/if}</b></span>
@@ -127,7 +127,7 @@
       <div class="room">
         <div class="oval felt"></div>
         <div class="pile">
-          <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} mine={-1} n={game.seats.length} cap={170} />
+          <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} tempo={game.tempo} mine={-1} n={game.seats.length} cap={170} />
         </div>
         {#each game.seats as _, seat (seat)}
           {@const at = place(seat, game.seats.length)}
@@ -137,7 +137,7 @@
         {/each}
       </div>
       <aside class="sheet pad">
-        <h2 class="display">{game.phase === 'scored' ? t('roundOf', { n: game.round }) : t('scorePad')}</h2>
+        <h2 class="display">{game.phase === 'scored' ? t('roundOf', { n: game.no }) : t('scorePad')}</h2>
         <ScoreTable {view} />
       </aside>
     </div>

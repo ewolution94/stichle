@@ -79,6 +79,26 @@ export function roundsFor(players) {
 }
 
 /**
+ * How long a game is (a house rule, R3; the user, 2026-10-14: "the default 20 rounds can take a bit
+ * too long"): `full` plays every round; `half` every other one from the first (1, 3, 5 …), so the big
+ * hands still come; `short` the first half only.
+ * @typedef {'full' | 'half' | 'short'} Length
+ */
+export const LENGTHS = Object.freeze(['full', 'half', 'short']);
+
+/**
+ * The cards dealt in each round of a game, in order: [1, 2, 3 … 20] for a full game of three.
+ * @param {number} players  @param {Length} [length]
+ */
+export function schedule(players, length = 'full') {
+  if (!LENGTHS.includes(length)) throw new RuleError('length');
+  const all = Array.from({ length: roundsFor(players) }, (_, i) => i + 1);
+  if (length === 'half') return all.filter((n) => n % 2 === 1);
+  if (length === 'short') return all.slice(0, Math.ceil(all.length / 2));
+  return all;
+}
+
+/**
  * Fisher–Yates. Returns a new array.
  * @template T  @param {readonly T[]} cards  @param {(n: number) => number} randomInt 0..n-1
  */

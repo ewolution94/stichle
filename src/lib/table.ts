@@ -2,7 +2,7 @@
 // your left, across the top, and round to your right (clockwise, as at a real table). Spectators see
 // it from the first seat.
 
-import type { Game } from './api';
+import type { Game, Length, Tempo } from './api';
 import { cardTwist, pileCardWidth, placeOf as kitPlaceOf, seatAngle, sweepTo, trickSlot } from '../../vendor/ewo/elements/card-pile.js';
 
 /** Who plays the round's first card (left of the dealer), from the deal until that card is on the
@@ -14,23 +14,39 @@ export function opener(game: Game) {
 }
 
 /**
- * The end of a trick, in beats counted back from the server's holdUntil (its TRICK_PAUSE, 2600 ms,
- * starts when the last card is played): first the table rests with every card where it landed, then
- * the winner lifts and catches the light while the others dim, then the cards gather under the
- * winner, then the stack sweeps off to the winner's seat (the user, 2026-10-13: "it feels very
- * rushed"). Every page reads the same beats from the same holdUntil.
+ * The end of a trick, in beats counted back from the server's holdUntil (its pause starts when the
+ * last card is played): first the table rests with every card where it landed, then the winner lifts
+ * and catches the light while the others dim, then the cards gather under the winner, then the stack
+ * sweeps off to the winner's seat (the user, 2026-10-13: "it feels very rushed"). Every page reads the
+ * same beats from the same holdUntil. The fast tempo (R3) plays the same ending in a shorter pause
+ * (server/game.mjs: TRICK_PAUSE 2600 ms, TRICK_PAUSE_FAST 1500 ms).
  */
-export const TRICK_REVEAL = 1900; // ms before holdUntil: the winner shows (700 ms after the last card)
-export const TRICK_GATHER = 420; // ms before holdUntil: the cards gather under the winner
-export const TRICK_SWEEP = 560; // ms after holdUntil: the stack sweeps off, then it's gone
+export const BEATS: Record<Tempo, { rest: number; reveal: number; gather: number; sweep: number }> = {
+  // ms: `rest` after the last card the winner shows; `reveal` and `gather` before holdUntil; `sweep` after it
+  normal: { rest: 700, reveal: 1900, gather: 420, sweep: 560 },
+  fast: { rest: 350, reveal: 1150, gather: 320, sweep: 400 },
+};
 export type TrickPhase = 'rest' | 'reveal' | 'gather' | 'sweep' | 'gone';
 /** The finished trick's beat, from the time left until holdUntil (negative after it). */
-export function trickPhase(left: number): TrickPhase {
-  if (left > TRICK_REVEAL) return 'rest';
-  if (left > TRICK_GATHER) return 'reveal';
+export function trickPhase(left: number, tempo: Tempo = 'normal'): TrickPhase {
+  const b = BEATS[tempo] ?? BEATS.normal;
+  if (left > b.reveal) return 'rest';
+  if (left > b.gather) return 'reveal';
   if (left > 0) return 'gather';
-  if (left > -TRICK_SWEEP) return 'sweep';
+  if (left > -b.sweep) return 'sweep';
   return 'gone';
+}
+
+/**
+ * The cards dealt in each round of a game of `players` at `length` (the same as server/rules.mjs →
+ * schedule; tests/table.test.mjs keeps them together).
+ */
+export function scheduleFor(players: number, length: Length = 'full'): number[] {
+  if (players < 3 || players > 6) return [];
+  const all = Array.from({ length: 60 / players }, (_, i) => i + 1);
+  if (length === 'half') return all.filter((n) => n % 2 === 1);
+  if (length === 'short') return all.slice(0, Math.ceil(all.length / 2));
+  return all;
 }
 
 let uid = 0;

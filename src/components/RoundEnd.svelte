@@ -32,7 +32,7 @@
 
 <div class="veil">
   <section class="sheet result" aria-labelledby="round-title">
-    <h2 id="round-title" class="display">{t('roundOf', { n: row.round })}</h2>
+    <h2 id="round-title" class="display">{t('roundOf', { n: row.no })}</h2>
     <ol>
       {#each order as seat (seat)}
         {@const p = playerAt(seat)}
@@ -48,7 +48,7 @@
     </ol>
     {#if mine >= 0}
       <button class="btn primary block" type="button" disabled={ready} onclick={(e) => actAt(room, 'next', undefined, e).catch(() => {})}>
-        {ready ? t('readyWaiting', { n: game.ready.length, of: humans }) : t('nextRound', { n: row.round + 1 })}
+        {ready ? t('readyWaiting', { n: game.ready.length, of: humans }) : t('nextRound', { n: row.no + 1 })}
       </button>
     {/if}
     {#if left > 0}<p class="soon">{t('dealsIn', { s: left })}</p>{/if}

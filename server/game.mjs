@@ -17,9 +17,9 @@
 import { randomBytes, randomInt as cryptoInt } from 'node:crypto';
 import { cleanAvatar, randomAvatar } from './avatar.mjs';
 import { botBid, botPlay, botTrump } from './bots.mjs';
-import { BIDDINGS, RuleError, SUITS, bid, bidders, deal, forbiddenBid, isJester, isWizard, legalCards, pickTrump, play, roundsFor, sortHand } from './rules.mjs';
+import { BIDDINGS, LENGTHS, RuleError, SUITS, bid, bidders, deal, forbiddenBid, isJester, isWizard, legalCards, pickTrump, play, schedule, sortHand } from './rules.mjs';
 
-export { BIDDINGS };
+export { BIDDINGS, LENGTHS };
 
 export class GameError extends Error {
   /** @param {string} code  @param {number} [status]  @param {Record<string, unknown>} [detail] */
@@ -39,8 +39,17 @@ export const CODE = /^[BCDFGHJKLMNPQRSTVWXZ]{4}$/;
 export const CLOCKS = Object.freeze(['off', 'relaxed', 'quick']);
 export const MOVE_SECONDS = Object.freeze({ relaxed: 60, quick: 25 });
 
-/** clock: a clock per move · bidding: open (the original), uneven ("mustn't add up"), secret (R2). */
-export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open' });
+/**
+ * The pace of a table (R3): `normal` lets a finished trick rest and sweep off at leisure; `fast`
+ * shortens that pause and the bots' thinking, for a quicker game.
+ */
+export const TEMPOS = Object.freeze(['normal', 'fast']);
+
+/**
+ * clock: a clock per move · bidding: open (the original), uneven ("mustn't add up"), secret (R2) ·
+ * length: full, half, short · tempo: normal, fast (R3).
+ */
+export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open', length: 'full', tempo: 'normal' });
 
 export const LIMITS = {
   rooms: 200,
@@ -59,6 +68,11 @@ export const LIMITS = {
 export const TRICK_PAUSE = 2600;
 /** A bot or the stand-in waits this long past the pause, so the sweep is over before it leads. */
 const AFTER_SWEEP = 600;
+/** The same at the fast tempo (src/lib/table.ts → BEATS.fast plays the trick's ending to it). */
+export const TRICK_PAUSE_FAST = 1500;
+const AFTER_SWEEP_FAST = 400;
+const pauseOf = (g) => (g.tempo === 'fast' ? TRICK_PAUSE_FAST : TRICK_PAUSE);
+const afterSweepOf = (g) => (g.tempo === 'fast' ? AFTER_SWEEP_FAST : AFTER_SWEEP);
 /** The round's result waits this long for everyone's "next", then the next round deals anyway. */
 export const ROUND_WAIT = 25_000;
 /** A seated player who's gone (closed the page) for this long on their move: the bot moves for them. */
@@ -70,7 +84,7 @@ const EMPTY_TTL = 30 * 60_000;
 /** A game with no human online for this long ends, so bots never play on for no one. */
 const UNWATCHED_MS = 2 * 60_000;
 const IDLE_TTL = 4 * 60 * 60_000;
-/** Bots think for a moment: between these many milliseconds. */
+/** Bots think for a moment: between these many milliseconds (half that at the fast tempo). */
 const BOT_THINK = [900, 1900];
 
 const BOT_NAMES = ['Robo Rita', 'Bot Bernd', 'Karo Klaus', 'Trumpf Tina', 'Stich Sven'];
@@ -226,11 +240,18 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     if (players.length < LIMITS.minSeats) throw new GameError('too-few', 409);
     if (players.length > LIMITS.seats) throw new GameError('too-many', 409);
     const n = players.length;
+    const plan = schedule(n, r.settings.length);
     r.game = {
       n: ++r.games,
       seats: players.map((p) => p.id),
-      rounds: roundsFor(n),
-      round: 1,
+      /** The cards dealt in each round of this game (R3's length: every round, every other, half). */
+      schedule: plan,
+      length: r.settings.length,
+      tempo: r.settings.tempo,
+      rounds: plan.length,
+      /** Which round this is (1 …), and the cards it deals (the same in a full game). */
+      no: 1,
+      round: plan[0],
       // The first dealer is drawn; the deal moves on one seat each round.
       dealer: randomInt(n),
       /** The house rule for bids, fixed for the game. */
@@ -338,12 +359,12 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     const result = rule(() => play(g.state, seat, card));
     if (result.trick) {
       g.lastTrick = { ...result.trick, n: g.state.tricks.length };
-      g.holdUntil = clock.now() + TRICK_PAUSE;
+      g.holdUntil = clock.now() + pauseOf(g);
     }
     if (result.done) {
       // The last trick stays in the middle for its moment, then the round's result.
-      const n = g.round;
-      later(r, TRICK_PAUSE, () => r.phase === 'play' && g.round === n && g.phase === 'round' && score(r));
+      const no = g.no;
+      later(r, pauseOf(g), () => r.phase === 'play' && g.no === no && g.phase === 'round' && score(r));
     }
     moved(r);
   }
@@ -351,14 +372,15 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
   function score(r) {
     const g = r.game;
     const s = g.state;
-    g.pad.push({ round: g.round, dealer: g.dealer, trump: s.trump, trumpCard: s.trumpCard, bids: [...s.bids], won: [...s.won], points: [...s.points], dealt: g.dealt });
+    // `final`: the last round of a full game (the achievements' "lastRound" counts only there).
+    g.pad.push({ no: g.no, round: g.round, final: g.length === 'full' && g.no === g.rounds, dealer: g.dealer, trump: s.trump, trumpCard: s.trumpCard, bids: [...s.bids], won: [...s.won], points: [...s.points], dealt: g.dealt });
     g.totals = g.totals.map((t, i) => t + s.points[i]);
-    if (g.round >= g.rounds) return finish(r, 'done');
+    if (g.no >= g.rounds) return finish(r, 'done');
     g.phase = 'scored';
     g.ready = [];
     g.readyBy = clock.now() + ROUND_WAIT;
-    const round = g.round;
-    later(r, ROUND_WAIT, () => r.phase === 'play' && g.phase === 'scored' && g.round === round && nextRound(r));
+    const no = g.no;
+    later(r, ROUND_WAIT, () => r.phase === 'play' && g.phase === 'scored' && g.no === no && nextRound(r));
     moved(r);
     readyCheck(r);
   }
@@ -373,7 +395,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
 
   function nextRound(r) {
     const g = r.game;
-    g.round++;
+    g.no++;
+    g.round = g.schedule[g.no - 1];
     g.dealer = (g.dealer + 1) % g.seats.length;
     dealRound(r);
   }
@@ -392,7 +415,10 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
 
   // ---- bots and the absent ------------------------------------------------------------------
 
-  const think = () => BOT_THINK[0] + randomInt(BOT_THINK[1] - BOT_THINK[0]);
+  const think = (g) => {
+    const ms = BOT_THINK[0] + randomInt(BOT_THINK[1] - BOT_THINK[0]);
+    return g?.tempo === 'fast' ? Math.round(ms / 2) : ms;
+  };
 
   /** If it's a bot's move, or the move of someone who's gone: it happens in a moment. */
   function botsPlay(r) {
@@ -407,11 +433,11 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       const p = r.players.get(g.seats[seat]);
       const only = s.phase === 'bid' ? seat : null;
       if (!p || p.bot) {
-        const wait = Math.max(think(), g.holdUntil - clock.now() + AFTER_SWEEP);
+        const wait = Math.max(think(g), g.holdUntil - clock.now() + afterSweepOf(g));
         later(r, wait, () => still() && autoMove(r, only));
       } else if (p.left || p.online === 0) {
         const gone = p.left ? 0 : AWAY_MS - Math.min(AWAY_MS, clock.now() - (p.offlineSince ?? clock.now()));
-        later(r, Math.max(gone, think(), g.holdUntil - clock.now() + AFTER_SWEEP), () => still() && (p.left || p.online === 0) && autoMove(r, only));
+        later(r, Math.max(gone, think(g), g.holdUntil - clock.now() + afterSweepOf(g)), () => still() && (p.left || p.online === 0) && autoMove(r, only));
       }
     }
   }
@@ -452,7 +478,11 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       /** Seats whose player has left: the bot plays for them. */
       gone: g.seats.map((id) => Boolean(r.players.get(id)?.left)),
       rounds: g.rounds,
+      /** Which round this is (1 …); `round` is the cards it deals (they differ in a half game). */
+      no: g.no,
       round: g.round,
+      length: g.length,
+      tempo: g.tempo,
       dealer: g.dealer,
       phase: g.phase,
       stage: s.phase,
@@ -874,5 +904,7 @@ export function mergeSettings(current, body) {
   const next = { ...current };
   if (CLOCKS.includes(body?.clock)) next.clock = body.clock;
   if (BIDDINGS.includes(body?.bidding)) next.bidding = body.bidding;
+  if (LENGTHS.includes(body?.length)) next.length = body.length;
+  if (TEMPOS.includes(body?.tempo)) next.tempo = body.tempo;
   return next;
 }

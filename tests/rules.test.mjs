@@ -13,6 +13,7 @@ import {
   pickTrump,
   play,
   roundsFor,
+  schedule,
   scoreRound,
   shuffled,
   sortHand,
@@ -95,6 +96,18 @@ test('parseCard reads every card back to its id and refuses anything else', () =
 test('rounds: 60 / players for 3 to 6 players, refused outside', () => {
   assert.deepEqual([3, 4, 5, 6].map(roundsFor), [20, 15, 12, 10]);
   for (const bad of [0, 1, 2, 7, 3.5, '4', null]) throws(() => roundsFor(bad), 'players');
+});
+
+test('the length: every round, every other one from the first, or the first half', () => {
+  assert.deepEqual(schedule(3), Array.from({ length: 20 }, (_, i) => i + 1));
+  assert.deepEqual(schedule(3, 'half'), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
+  assert.deepEqual(schedule(3, 'short'), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(schedule(4, 'half'), [1, 3, 5, 7, 9, 11, 13, 15]);
+  assert.deepEqual(schedule(4, 'short'), [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.deepEqual(schedule(5, 'half'), [1, 3, 5, 7, 9, 11]);
+  assert.deepEqual(schedule(6, 'short'), [1, 2, 3, 4, 5]);
+  throws(() => schedule(3, 'forever'), 'length');
+  throws(() => schedule(7, 'half'), 'players');
 });
 
 test('shuffled: a new array with the same cards, the same order for the same seed', () => {

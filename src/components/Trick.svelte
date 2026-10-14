@@ -10,7 +10,8 @@
   import type { FinishedTrick, Trick } from '../lib/api';
   import { flight } from '../lib/flight.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { angleOf, slotOffset, sweepOffset, trickCardWidth, trickPhase, twist, TRICK_GATHER, TRICK_REVEAL, TRICK_SWEEP } from '../lib/table';
+  import type { Tempo } from '../lib/api';
+  import { angleOf, BEATS, slotOffset, sweepOffset, trickCardWidth, trickPhase, twist } from '../lib/table';
   import Card from './Card.svelte';
 
   let {
@@ -18,6 +19,7 @@
     trick,
     last,
     holdUntil,
+    tempo = 'normal',
     mine,
     n,
     width = $bindable(320),
@@ -28,6 +30,8 @@
     trick: Trick;
     last: FinishedTrick | null;
     holdUntil: number;
+    /** The table's pace (R3): the fast one plays the same ending in a shorter pause. */
+    tempo?: Tempo;
     mine: number;
     n: number;
     width?: number;
@@ -48,7 +52,8 @@
     // A new reading of the server's clock comes with a fresh clock here too (Table.svelte: a stale one
     // kept a finished trick on the table).
     now = local;
-    const marks = [holdUntil - TRICK_REVEAL, holdUntil - TRICK_GATHER, holdUntil, holdUntil + TRICK_SWEEP].map((at) => at - offset - local);
+    const b = BEATS[tempo] ?? BEATS.normal;
+    const marks = [holdUntil - b.reveal, holdUntil - b.gather, holdUntil, holdUntil + b.sweep].map((at) => at - offset - local);
     marks.push(flight.until - local);
     const timers = marks.filter((ms) => ms > 0 && ms < 15_000).map((ms) => setTimeout(() => (now = Date.now()), ms + 20));
     return () => timers.forEach(clearTimeout);
@@ -60,7 +65,7 @@
     now = Date.now();
   });
 
-  const phase = $derived(trickPhase(holdUntil - (now + room.offset)));
+  const phase = $derived(trickPhase(holdUntil - (now + room.offset), tempo));
   const showLast = $derived(!trick.cards.length && last !== null && phase !== 'gone');
   const shown = $derived(trick.cards.length ? trick.cards : showLast && last ? last.cards : []);
   const cw = $derived(trickCardWidth(width, height, cap));
@@ -90,7 +95,7 @@
   });
 </script>
 
-<div class="trick" bind:clientWidth={width} bind:clientHeight={height} aria-live="polite">
+<div class="trick" class:fast={tempo === 'fast'} bind:clientWidth={width} bind:clientHeight={height} aria-live="polite">
   {#each shown as played, i (played.card)}
     {@const p = place(played.seat)}
     {@const winner = showLast && last?.winner === played.seat}
@@ -210,6 +215,16 @@
   }
   .played.won.sweep {
     translate: var(--ax) var(--ay);
+  }
+  /* The fast tempo: the same moves in a shorter pause (src/lib/table.ts → BEATS.fast). */
+  .fast .played {
+    transition-duration: 0.28s, 0.28s, 0.28s, 0.28s, 0.3s;
+  }
+  .fast .played.sweep {
+    transition-duration: 0.34s;
+  }
+  .fast .sheen::before {
+    animation-duration: 0.6s;
   }
   @media (prefers-reduced-motion: reduce) {
     .played,

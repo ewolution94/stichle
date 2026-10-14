@@ -35,9 +35,9 @@
       </tr>
     </thead>
     <tbody>
-      {#each game.pad as row, ri (row.round)}
+      {#each game.pad as row, ri (row.no)}
         <tr>
-          <th scope="row" class="r">{row.round}</th>
+          <th scope="row" class="r">{row.no}</th>
           {#each game.seats as _, i (i)}
             {@const met = row.bids[i] === row.won[i]}
             <td>
@@ -49,7 +49,7 @@
       {/each}
       {#if game.phase === 'round'}
         <tr class="now">
-          <th scope="row" class="r">{game.round}</th>
+          <th scope="row" class="r">{game.no}</th>
           {#each game.seats as _, i (i)}
             <td><small>{game.bids[i] ?? (game.bidIn[i] ? '✓' : '–')}{game.bids[i] !== null ? `·${game.won[i]}` : ''}</small></td>
           {/each}

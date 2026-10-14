@@ -194,12 +194,13 @@ export function countRound(
 
 /**
  * A finished game (played to the end, not stopped): the totals per seat, your seat, every round's
- * points per seat, and how many sat at the table.
+ * points per seat, how many sat at the table, and whether it was a full-length game (R3: a half or
+ * short game counts, but never earns "perfect", the rarest).
  */
 export function countGame(
   record: PlayerRecord,
   key: string,
-  { totals, mine, points, bids, won, players }: { totals: number[]; mine: number; points: number[][]; bids: number[][]; won: number[][]; players: number },
+  { totals, mine, points, bids, won, players, full = true }: { totals: number[]; mine: number; points: number[][]; bids: number[][]; won: number[][]; players: number; full?: boolean },
   now = Date.now(),
 ) {
   if (!once(record, key)) return [];
@@ -214,7 +215,7 @@ export function countGame(
     const sums = totals.map((_, seat) => points.slice(0, half).reduce((s, row) => s + row[seat], 0));
     behind = sums[mine] === Math.min(...sums) && sums.some((s) => s > sums[mine]);
   }
-  const perfect = bids.length > 0 && bids.every((row, i) => row[mine] === won[i][mine]);
+  const perfect = full && bids.length > 0 && bids.every((row, i) => row[mine] === won[i][mine]);
   return award(
     record,
     [win && 'firstWin', record.games >= 10 && 'tenGames', perfect && 'perfect', win && behind && 'comeback', players === 6 && 'fullTable'],
