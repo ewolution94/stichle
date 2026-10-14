@@ -100,7 +100,8 @@
     {@const p = place(played.seat)}
     {@const winner = showLast && last?.winner === played.seat}
     {@const decided = showLast && phase !== 'rest'}
-    {@const hidden = played.card === flight.card && now < flight.until}
+    <!-- Your card from the forehead round flies as its back: the real one shows once it has landed. -->
+    {@const hidden = (played.card === flight.card || (flight.card === 'back' && played.seat === mine)) && now < flight.until}
     <div
       class="played"
       class:won={decided && winner}

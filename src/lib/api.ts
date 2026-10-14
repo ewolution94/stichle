@@ -20,6 +20,8 @@ export interface Settings {
   bidding: Bidding;
   length: Length;
   tempo: Tempo;
+  /** The forehead round (R3): the one-card round played blind to your own card. */
+  forehead: boolean;
 }
 
 export interface Player {
@@ -75,6 +77,9 @@ export interface Game {
   round: number;
   length: Length;
   tempo: Tempo;
+  forehead: boolean;
+  /** In the forehead round, each other seat's card while it's held (yours null); otherwise null. */
+  foreheads: (CardId | null)[] | null;
   dealer: number;
   /** round: the cards are out · scored: the round's result · final: the game is over */
   phase: 'round' | 'scored' | 'final';

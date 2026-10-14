@@ -8,7 +8,7 @@
 <script lang="ts">
   import { nameOf, fromId } from '../lib/deck';
   import { flying } from '../lib/flight.svelte';
-  import { i18n } from '../lib/i18n.svelte';
+  import { i18n, t } from '../lib/i18n.svelte';
   import Card from './Card.svelte';
   import { fanLayout, fanTransform, flightTransform } from '../../vendor/ewo/elements/card-fan.js';
   import { handGestures, type Dragged } from '../../vendor/ewo/elements/card-hand.js';
@@ -185,7 +185,7 @@
       style:width="{cw}px"
       style:transform={air && air.card === card ? air.transform : transformOf(card)}
       style:z-index={air?.card === card || drag?.key === card ? 300 : (p?.z ?? 0)}
-      aria-label={nameOf(fromId(card), i18n.lang)}
+      aria-label={card === 'back' ? t('yourHiddenCard') : nameOf(fromId(card), i18n.lang)}
       aria-disabled={!canPlay || !legal.includes(card)}
       onclick={(e) => key(e, card)}
       use:register={card}

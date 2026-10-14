@@ -7,8 +7,8 @@
 -->
 <script lang="ts">
   import { ApiError, type View } from '../lib/api';
-  import { fromId, SUITS, type Suit } from '../lib/deck';
-  import { errorText, t, suitName } from '../lib/i18n.svelte';
+  import { fromId, nameOf, SUITS, type Suit } from '../lib/deck';
+  import { errorText, i18n, t, suitName } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
   import { angleOf, BEATS, slotOffset, trickCardWidth, trickPhase, twist } from '../lib/table';
   import { actAt } from '../lib/waits';
@@ -209,8 +209,13 @@
     {#each others as seat, i (seat)}
       <div class="far" style:--lift="{Math.round((1 - Math.sin(((i + 1) / (others.length + 1)) * Math.PI)) * 14)}px">
         <SeatChip {game} {seat} player={playerAt(seat)} compact />
-        <span class="held" aria-label={t('cardsLeft', { n: game.counts[seat] })}>
-          {#each { length: Math.min(game.counts[seat], 7) } as _, k (k)}<i style:--k={k - (Math.min(game.counts[seat], 7) - 1) / 2}></i>{/each}
+        <span class="held" aria-label={game.foreheads?.[seat] ? t('foreheadOf', { name: playerAt(seat)?.name ?? '', card: nameOf(fromId(game.foreheads[seat]), i18n.lang) }) : t('cardsLeft', { n: game.counts[seat] })}>
+          {#if game.foreheads?.[seat]}
+            <!-- The forehead round: their card held up for everyone else to see, over the felt (the row keeps its height). -->
+            <span class="brow"><Card id={game.foreheads[seat]} /></span>
+          {:else}
+            {#each { length: Math.min(game.counts[seat], 7) } as _, k (k)}<i style:--k={k - (Math.min(game.counts[seat], 7) - 1) / 2}></i>{/each}
+          {/if}
         </span>
       </div>
     {/each}
@@ -242,6 +247,7 @@
     {:else if deciding && game.stage === 'bid'}
       <div class="panel sheet bid">
         <span class="label">{t('yourBid')}</span>
+        {#if game.foreheads}<span class="brow-hint">{t('foreheadHint')}</span>{/if}
         <div class="dial">
           <button class="step" type="button" aria-label={t('bidLess')} disabled={pick <= 0} onclick={() => nudge(-1)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
@@ -450,6 +456,29 @@
   .far :global(.seat) {
     width: 100%;
     max-width: 120px;
+  }
+  /* The forehead round: their one card, face up, held where their hand would be. */
+  .brow {
+    position: absolute;
+    z-index: 1;
+    left: 50%;
+    top: 8px;
+    width: 44px;
+    margin-left: -22px;
+    rotate: -4deg;
+    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.5));
+    animation: brow-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+  }
+  @keyframes brow-in {
+    from {
+      translate: 0 8px;
+      opacity: 0;
+    }
+  }
+  .brow-hint {
+    font-size: 13px;
+    color: var(--mute);
+    text-align: center;
   }
   /* Their hand, face down: a little fan of backs. */
   .held {

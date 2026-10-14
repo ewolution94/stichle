@@ -16,7 +16,7 @@
 
 import { randomBytes, randomInt as cryptoInt } from 'node:crypto';
 import { cleanAvatar, randomAvatar } from './avatar.mjs';
-import { botBid, botPlay, botTrump } from './bots.mjs';
+import { botBid, botBidForehead, botPlay, botTrump } from './bots.mjs';
 import { BIDDINGS, LENGTHS, RuleError, SUITS, bid, bidders, deal, forbiddenBid, isJester, isWizard, legalCards, pickTrump, play, schedule, sortHand } from './rules.mjs';
 
 export { BIDDINGS, LENGTHS };
@@ -47,9 +47,9 @@ export const TEMPOS = Object.freeze(['normal', 'fast']);
 
 /**
  * clock: a clock per move · bidding: open (the original), uneven ("mustn't add up"), secret (R2) ·
- * length: full, half, short · tempo: normal, fast (R3).
+ * length: full, half, short · tempo: normal, fast · forehead: the one-card round played blind (R3).
  */
-export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open', length: 'full', tempo: 'normal' });
+export const DEFAULT_SETTINGS = Object.freeze({ clock: 'off', bidding: 'open', length: 'full', tempo: 'normal', forehead: false });
 
 export const LIMITS = {
   rooms: 200,
@@ -73,6 +73,8 @@ export const TRICK_PAUSE_FAST = 1500;
 const AFTER_SWEEP_FAST = 400;
 const pauseOf = (g) => (g.tempo === 'fast' ? TRICK_PAUSE_FAST : TRICK_PAUSE);
 const afterSweepOf = (g) => (g.tempo === 'fast' ? AFTER_SWEEP_FAST : AFTER_SWEEP);
+/** The forehead round is on: the house rule, and the round deals one card each. */
+const blind = (g) => Boolean(g.forehead) && g.round === 1 && g.phase === 'round';
 /** The round's result waits this long for everyone's "next", then the next round deals anyway. */
 export const ROUND_WAIT = 25_000;
 /** A seated player who's gone (closed the page) for this long on their move: the bot moves for them. */
@@ -248,6 +250,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       schedule: plan,
       length: r.settings.length,
       tempo: r.settings.tempo,
+      /** The forehead round (R3): in the one-card round you see everyone's card but your own. */
+      forehead: Boolean(r.settings.forehead),
       rounds: plan.length,
       /** Which round this is (1 …), and the cards it deals (the same in a full game). */
       no: 1,
@@ -325,7 +329,9 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     const s = g.state;
     if (g.phase !== 'round') return;
     if (s.phase === 'bid') {
-      for (const seat of only === null ? waiting(s) : [only]) if (s.phase === 'bid' && bidders(s).includes(seat)) placeBid(r, seat, botBid(s, seat));
+      // In the forehead round the bot can't see its own card either (bots.mjs → botBidForehead).
+      const bidFor = blind(g) ? botBidForehead : botBid;
+      for (const seat of only === null ? waiting(s) : [only]) if (s.phase === 'bid' && bidders(s).includes(seat)) placeBid(r, seat, bidFor(s, seat));
       return;
     }
     const seat = s.turn;
@@ -472,6 +478,8 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
     const s = g.state;
     const mine = me ? g.seats.indexOf(me.id) : -1;
     const final = g.phase === 'final';
+    // The forehead round: your own card reaches your page only as its back; the others' lie open.
+    const hidden = blind(g) && mine >= 0;
     return {
       n: g.n,
       seats: g.seats,
@@ -502,8 +510,14 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
       lastTrick: g.lastTrick,
       holdUntil: g.holdUntil,
       counts: s.hands.map((h) => h.length),
-      hand: mine >= 0 && !final ? s.hands[mine] : null,
-      legal: mine >= 0 && s.phase === 'play' && s.turn === mine && g.phase === 'round' ? legalCards(s, mine) : [],
+      hand: mine >= 0 && !final ? (hidden ? s.hands[mine].map(() => 'back') : s.hands[mine]) : null,
+      legal: mine >= 0 && s.phase === 'play' && s.turn === mine && g.phase === 'round' ? (hidden ? legalCards(s, mine).map(() => 'back') : legalCards(s, mine)) : [],
+      forehead: Boolean(g.forehead),
+      /**
+       * In the forehead round, every other seat's card while it's still held (yours null). Never for
+       * the big screen: everyone at the table can see it, its own card too.
+       */
+      foreheads: blind(g) && me ? s.hands.map((h, i) => (i === mine ? null : (h[0] ?? null))) : null,
       pad: g.pad.map(({ dealt, ...row }) => row),
       totals: g.totals,
       ready: g.ready,
@@ -731,7 +745,9 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
           requirePhase(r, 'play');
           if (g.phase !== 'round') throw new GameError('wrong-phase', 409);
           if (typeof body?.card !== 'string') throw new GameError('card');
-          playCard(r, mine, body.card);
+          // The forehead round: you play the card you can't see, as "back".
+          const card = body.card === 'back' && blind(g) ? (g.state.hands[mine]?.[0] ?? body.card) : body.card;
+          playCard(r, mine, card);
           return;
         }
         case 'next': {
@@ -906,5 +922,6 @@ export function mergeSettings(current, body) {
   if (BIDDINGS.includes(body?.bidding)) next.bidding = body.bidding;
   if (LENGTHS.includes(body?.length)) next.length = body.length;
   if (TEMPOS.includes(body?.tempo)) next.tempo = body.tempo;
+  if (typeof body?.forehead === 'boolean') next.forehead = body.forehead;
   return next;
 }

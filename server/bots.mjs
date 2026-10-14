@@ -78,6 +78,26 @@ export function botBid(state, seat) {
 }
 
 /**
+ * The forehead round (R3, the one-card round played blind): the bot can't see its own card, only
+ * the others'. Every card it might hold (any that isn't on a forehead or turned up) is tried against
+ * them in play order from the lead; it bids one when it would take the trick with at least half.
+ * @param {RoundState} state  @param {number} seat
+ */
+export function botBidForehead(state, seat) {
+  const { players, trump, trumpCard, trick } = state;
+  const others = state.hands.map((h, i) => (i === seat ? null : h[0]));
+  const seen = new Set([...others.filter((id) => id !== null), ...(trumpCard ? [trumpCard] : [])]);
+  const mine = DECK.filter((id) => !seen.has(id));
+  let wins = 0;
+  for (const id of mine) {
+    const cards = Array.from({ length: players }, (_, k) => (trick.lead + k) % players).map((s) => ({ seat: s, card: s === seat ? id : others[s] }));
+    if (cards[trickWinner(cards, trump)].seat === seat) wins++;
+  }
+  const n = wins * 2 >= mine.length ? 1 : 0;
+  return n === forbiddenBid(state, seat) ? 1 - n : n;
+}
+
+/**
  * A legal card for `seat`, whose turn it is to play.
  * @param {RoundState} state  @param {number} seat
  */

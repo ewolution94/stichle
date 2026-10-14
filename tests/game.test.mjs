@@ -438,3 +438,56 @@ test('length and tempo are settings the host picks; anything else is ignored', (
   assert.equal(r.pages[0].view.settings.tempo, 'fast');
   assert.equal(code(() => r.act(r.seats[1], 'settings', { length: 'full' })), 'not-host');
 });
+
+test('the forehead round: your own card reaches your page only as its back; the others and watchers see it, the big screen not', () => {
+  const { games, clock } = setup(31);
+  const r = room(games, 2);
+  const screen = watch(games, r.code);
+  r.act(r.host, 'settings', { forehead: true });
+  r.act(r.host, 'start');
+  assert.equal(r.pages[0].view.game.forehead, true);
+  for (const [i, page] of r.pages.entries()) {
+    const g = page.view.game;
+    const me = g.seats.indexOf(r.seats[i].player);
+    assert.deepEqual(g.hand, ['back']);
+    assert.equal(g.foreheads[me], null);
+    g.foreheads.forEach((card, seat) => seat !== me && assert.match(card, /^(?:[zn]-\w+|\w+-\d+)$/));
+    // Your card is nowhere in your view: it's what the next seat sees on your forehead.
+    const yours = r.pages[(i + 1) % 3].view.game.foreheads[me];
+    assert.ok(yours && !JSON.stringify(page.view).includes(`"${yours}"`), 'your own card reached your page');
+  }
+  assert.equal(screen.view.game.foreheads, null);
+  // Bid and play blind: "back" plays the one card you hold, and the trick shows what it was.
+  const before = r.pages.map((page, i) => r.pages[(i + 1) % 3].view.game.foreheads[page.view.game.seats.indexOf(r.seats[i].player)]);
+  while (r.pages[0].view.game.stage !== 'play') move(r);
+  for (let i = 0; i < 3; i++) {
+    const g = r.pages[turnOf(r)].view.game;
+    assert.deepEqual(g.legal, ['back']);
+    move(r);
+  }
+  const played = r.pages[0].view.game.lastTrick.cards.map((c) => c.card).sort();
+  assert.deepEqual(played, [...before].sort());
+  // The second round deals two cards each, seen as usual.
+  clock.advance(TRICK_PAUSE);
+  for (const seat of r.seats) r.act(seat, 'next');
+  const g2 = r.pages[0].view.game;
+  assert.equal(g2.round, 2);
+  assert.equal(g2.hand.length, 2);
+  assert.ok(g2.hand.every((c) => c !== 'back'));
+  assert.equal(g2.foreheads, null);
+  games.close();
+});
+
+test('the forehead round with bots: they bid on the others\' cards and the game goes on', () => {
+  const { games, clock } = setup(41);
+  const r = room(games, 0);
+  r.act(r.host, 'bot', { add: true });
+  r.act(r.host, 'bot', { add: true });
+  r.act(r.host, 'settings', { forehead: true, length: 'short' });
+  r.act(r.host, 'start');
+  const v = playToFinal(r, clock);
+  assert.equal(v.phase, 'final');
+  assert.equal(v.game.pad[0].round, 1);
+  for (const row of v.game.pad) assert.equal(row.won.reduce((a, b) => a + b, 0), row.round);
+  games.close();
+});

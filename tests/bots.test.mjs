@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { botBid, botPlay, botTrump } from '../server/bots.mjs';
+import { botBid, botBidForehead, botPlay, botTrump } from '../server/bots.mjs';
 import { DECK, SUITS, bid, deal, forbiddenBid, legalCards, pickTrump, play, roundsFor } from '../server/rules.mjs';
 
 /** mulberry32: a repeatable random integer below n. */
@@ -241,4 +241,17 @@ test('with "mustn\'t add up" a bot dealer never bids the forbidden number', () =
       bid(s, s.turn, n);
     }
   }
+});
+
+test('the forehead round: a bot bids from the others\' cards, never its own', () => {
+  // Three seats, the bot in seat 2; the others hold their cards up. Seat 0 leads (left of dealer 2).
+  const base = deal({ players: 3, round: 1, dealer: 2, hands: [['z-fire'], ['water-3'], ['earth-13']], trumpCard: 'earth-5' });
+  // A Wizard on someone's forehead, played before it: nothing it holds can take the trick.
+  assert.equal(botBidForehead(base, 2), 0);
+  // Two Jesters before it: almost anything it might hold takes the trick.
+  const weak = deal({ players: 3, round: 1, dealer: 2, hands: [['n-fire'], ['n-water'], ['air-1']], trumpCard: 'earth-5' });
+  assert.equal(botBidForehead(weak, 2), 1);
+  // Its own card doesn't change the bid: it can't see it.
+  const same = deal({ players: 3, round: 1, dealer: 2, hands: [['n-fire'], ['n-water'], ['z-air']], trumpCard: 'earth-5' });
+  assert.equal(botBidForehead(same, 2), botBidForehead(weak, 2));
 });

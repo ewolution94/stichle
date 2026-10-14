@@ -248,6 +248,18 @@
       {/if}
       <span class="hint">{t(`tempoHint_${settings.tempo ?? 'normal'}`)}</span>
     </div>
+    <div class="setting">
+      <span class="label">{t('forehead')}</span>
+      {#if isHost}
+        <ewo-segmented stretch value={settings.forehead ? 'on' : 'off'} label={t('forehead')} onchange={(e) => change({ forehead: e.detail.value === 'on' })}>
+          <option value="off">{t('forehead_off')}</option>
+          <option value="on">{t('forehead_on')}</option>
+        </ewo-segmented>
+      {:else}
+        <b>{t(settings.forehead ? 'forehead_on' : 'forehead_off')}</b>
+      {/if}
+      <span class="hint">{t(settings.forehead ? 'foreheadHint_on' : 'foreheadHint_off')}</span>
+    </div>
     <p class="length">{rounds ? t('lengthHint', { players: seated.length, rounds }) : t('lengthNone', { min: MIN, max: MAX })}</p>
   </section>
 
