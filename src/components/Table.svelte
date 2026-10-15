@@ -310,7 +310,7 @@
       <div class="desk-seats" style:--count={others.length}>
         {#each others as seat (seat)}
           <div class="desk-seat">
-            <SeatChip {game} {seat} player={playerAt(seat)} showBid={false} />
+            <SeatChip {game} {seat} player={playerAt(seat)} showBid={false} rank />
             <div class="desk-under">
               <BidCoins bid={game.bids[seat]} won={game.won[seat] ?? 0} bidding={game.stage === 'bid' && game.waiting.includes(seat)} hidden={game.bidIn[seat] && game.bids[seat] === null} />
               {#if game.foreheads?.[seat]}
@@ -357,7 +357,7 @@
       <!-- You: your place card, your bid as coins, the order of your hand. -->
       <div class="desk-me">
         <span class="desk-sort">{#if mine >= 0 && game.hand && game.hand.length > 1}<SortToggle />{/if}</span>
-        {#if mine >= 0 || n > 0}<SeatChip {game} seat={home} player={playerAt(home)} me={mine >= 0} showBid={false} />{/if}
+        {#if mine >= 0 || n > 0}<SeatChip {game} seat={home} player={playerAt(home)} me={mine >= 0} showBid={false} rank />{/if}
         <BidCoins bid={game.bids[home]} won={game.won[home] ?? 0} bidding={game.stage === 'bid' && game.waiting.includes(home) && mine < 0} hidden={game.bidIn[home] && game.bids[home] === null} />
       </div>
 
@@ -827,9 +827,12 @@
     justify-content: center;
   }
   /* The hand's order, at the row's far end, just under the cloth's rail (never on its stitching) and
-     above the hand's own room: out of the way, and nothing moves when it shows. */
+     above the hand's own room: out of the way, and nothing moves when it shows. Over the hand's box,
+     which starts above its cards: a tap on the toggle's lower half went to the hand and lifted a card
+     (the user, 2026-10-15). A card in the air still passes over it. */
   .sorter {
     position: absolute;
+    z-index: 1;
     right: 6px;
     top: calc(100% - 12px);
   }

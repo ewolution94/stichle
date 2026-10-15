@@ -189,9 +189,9 @@
     </div>
     <p class="hint">{t('orderHint')}</p>
     <div class="row">
-      {#if amSeated}
-        <button class="btn small quiet" type="button" onclick={(e) => act('sit', { seated: false }, e)}>{t('watch')}</button>
-      {:else if seated.length < MAX}
+      <!-- No "just watch" for whoever sits (the user, 2026-10-15: not needed); the host can still seat
+           someone to watch from their sheet, and a watcher takes a free chair here. -->
+      {#if !amSeated && seated.length < MAX}
         <button class="btn small" type="button" onclick={(e) => act('sit', { seated: true }, e)}>{t('sitDown')}</button>
       {/if}
       {#if isHost}
