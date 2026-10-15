@@ -133,7 +133,7 @@
         {#each game.seats as _, seat (seat)}
           {@const at = place(seat, game.seats.length)}
           <div class="seat" style:left="{at.x}%" style:top="{at.y}%">
-            <SeatChip {game} {seat} player={playerAt(seat)} compact />
+            <SeatChip {game} {seat} player={playerAt(seat)} compact rank />
           </div>
         {/each}
       </div>

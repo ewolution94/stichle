@@ -1,7 +1,7 @@
 <!--
   A bot's rank as three small lozenges in the cards' gold, filled to its rank (the user, 2026-10-14:
-  Apprentice, Journeyman, Master, as in a guild). In the lobby beside its name, at the table on its
-  place card (unless Settings hides them).
+  Apprentice, Journeyman, Master, as in a guild). In the lobby beside its name; in a game on its place
+  card on the desktop table and the big screen, not on the phone (the user, 2026-10-15).
 -->
 <script lang="ts">
   import type { Level } from '../lib/api';

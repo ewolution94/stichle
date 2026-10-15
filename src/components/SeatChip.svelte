@@ -10,7 +10,6 @@
   import { opener } from '../lib/table';
   import Avatar from './Avatar.svelte';
   import BotRank from './BotRank.svelte';
-  import { prefs } from '../lib/prefs.svelte';
 
   let {
     game,
@@ -19,6 +18,7 @@
     me = false,
     compact = false,
     showBid = true,
+    rank = false,
   }: {
     game: Game;
     seat: number;
@@ -27,6 +27,9 @@
     compact?: boolean;
     /** The bid as pips on the card; the desktop table lays it on the felt as coins instead (BidCoins). */
     showBid?: boolean;
+    /** A bot's rank beside its name: on the desktop table and the big screen, not on the phone (the
+     *  user, 2026-10-15). */
+    rank?: boolean;
   } = $props();
 
   const bidValue = $derived(game.bids[seat]);
@@ -47,8 +50,7 @@
   <div class="info">
     <span class="who">
       <span class="name">{me ? t('you') : (player?.name ?? '?')}</span>
-      <!-- A bot's rank, unless Settings hides it (the user, 2026-10-14). -->
-      {#if player?.bot && prefs.ranks}<BotRank level={player.level} size={5} />{/if}
+      {#if player?.bot && rank}<BotRank level={player.level} size={5} />{/if}
     </span>
     <span class="line">
       {#if !showBid}
