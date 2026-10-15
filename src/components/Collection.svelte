@@ -95,6 +95,7 @@
               >
                 <span class="mini-table" class:locked={!open}>
                   <span class="board" data-table={table}><span class="felt" data-table={table}></span></span>
+                  {#if profile.look.table === table}<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5 10 16.5 18 8" /></svg>{/if}
                   {#if !open}<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{/if}
                 </span>
                 <small>{t(`look_${table}`)}</small>
@@ -119,6 +120,7 @@
               >
                 <span class="mini" class:locked={!open}>
                   <Card back previewBack={back} />
+                  {#if profile.look.back === back}<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5 10 16.5 18 8" /></svg>{/if}
                   {#if !open}<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{/if}
                 </span>
                 <small>{t(`look_${back}`)}</small>
@@ -322,9 +324,41 @@
     height: 9px;
     padding: 3px;
   }
+  /* The one in use: a broad gold ring with a glow, a gold tick in its corner, its name in gold (the
+     user, 2026-10-15: the thin ring was too easy to miss). */
   .table[aria-checked='true'] .mini-table,
   .back[aria-checked='true'] .mini {
-    box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--gold);
+    box-shadow:
+      0 0 0 2px var(--paper),
+      0 0 0 5px var(--gold),
+      0 8px 18px -6px rgb(176 138 58 / 0.75);
+  }
+  .table[aria-checked='true'] small:first-of-type,
+  .back[aria-checked='true'] small {
+    color: var(--gold-lo);
+    font-weight: 700;
+  }
+  .tick {
+    position: absolute;
+    z-index: 2;
+    top: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 2px var(--paper);
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .mini .tick {
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
   }
   .table small,
   .back small {
