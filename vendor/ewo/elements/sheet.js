@@ -61,7 +61,10 @@ var u = t`
 
   @keyframes up { from { translate: 0 100%; } }
   @keyframes down { to { translate: 0 100%; } }
-  @keyframes pop { from { opacity: 0; scale: 0.96; } }
+  /* A rise, not a grow (2026-10-15): after a scale-in, Chrome kept the paint it made while scaling
+     whenever the centred dialog sat on a half pixel, and drew segmented tracks 1 px off their pills
+     until something repainted them (Stichle's settings, a DPR-1 screen). */
+  @keyframes pop { from { opacity: 0; translate: 0 10px; } }
   @keyframes unpop { to { opacity: 0; scale: 0.97; } }
   @keyframes fade { from { opacity: 0; } }
 
