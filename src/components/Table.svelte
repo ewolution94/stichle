@@ -18,6 +18,7 @@
   import Clock from './Clock.svelte';
   import Hand from './Hand.svelte';
   import Inspect from './Inspect.svelte';
+  import TrickOverview from './TrickOverview.svelte';
   import RoundEnd from './RoundEnd.svelte';
   import ScorePad from './ScorePad.svelte';
   import SeatChip from './SeatChip.svelte';
@@ -131,6 +132,27 @@
   /** The trick before, face down by the desktop table's edge once it has been swept off. */
   const lastPile = $derived(game.lastTrick && !holding ? game.lastTrick : null);
   const lastTaker = $derived(lastPile ? (lastPile.stolen ? (lastPile.cards.find((c) => c.card === 'thief')?.seat ?? lastPile.winner) : lastPile.winner) : -1);
+
+  // The trick in the order it was played, on a tap on the stack (TrickOverview.svelte): the one in
+  // play, or the finished one while it still lies on the table.
+  const pile = $derived(
+    game.trick.cards.length
+      ? { cards: game.trick.cards, decided: null, stolen: false }
+      : holding && game.lastTrick
+        ? { cards: game.lastTrick.cards, decided: game.lastTrick.winner, stolen: Boolean(game.lastTrick.stolen) }
+        : null,
+  );
+  let overview = $state(false);
+  $effect(() => {
+    if (!pile) overview = false;
+  });
+  const nameAt = (seat: number) => (seat === mine ? t('you') : (playerAt(seat)?.name ?? '?'));
+  function tapPile(e: Event) {
+    if (e instanceof KeyboardEvent && e.key !== 'Enter' && e.key !== ' ') return;
+    if (!pile) return;
+    e.preventDefault();
+    overview = !overview;
+  }
 
   let trickW = $state(320);
   let trickH = $state(260);
@@ -334,8 +356,10 @@
         </span>
       </button>
 
-      <div class="desk-middle" bind:this={trickEl}>
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div class="desk-middle" class:tappable={pile} bind:this={trickEl} role={pile ? 'button' : undefined} tabindex={pile ? 0 : undefined} aria-label={pile ? t('trickOverview') : undefined} onclick={tapPile} onkeydown={tapPile}>
         <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} tempo={game.tempo} {mine} {n} cap={DESK_CAP} bind:width={trickW} bind:height={trickH} />
+        {#if overview && pile}<TrickOverview cards={pile.cards} trump={game.trump} decided={pile.decided} stolen={pile.stolen} {nameAt} onclose={() => (overview = false)} />{/if}
       </div>
 
       <!-- The trick before, face down where it was swept; hover or focus to look at it. -->
@@ -425,8 +449,10 @@
     {/each}
   </div>
 
-  <div class="middle" bind:this={trickEl}>
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <div class="middle" class:tappable={pile} bind:this={trickEl} role={pile ? 'button' : undefined} tabindex={pile ? 0 : undefined} aria-label={pile ? t('trickOverview') : undefined} onclick={tapPile} onkeydown={tapPile}>
     <Trick {room} trick={game.trick} last={game.lastTrick} holdUntil={game.holdUntil} tempo={game.tempo} {mine} {n} bind:width={trickW} bind:height={trickH} />
+    {#if overview && pile}<TrickOverview cards={pile.cards} trump={game.trump} decided={pile.decided} stolen={pile.stolen} {nameAt} onclose={() => (overview = false)} />{/if}
   </div>
   </div>
 
@@ -656,6 +682,17 @@
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
+  }
+  .middle.tappable,
+  .desk-middle.tappable {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .middle:focus-visible,
+  .desk-middle:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: -6px;
+    border-radius: 14px;
   }
 
   .dock {
