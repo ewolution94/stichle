@@ -753,6 +753,17 @@ export function createGames({ clock = realClock, randomInt = (n) => cryptoInt(n)
           touch(r);
           return;
         }
+        case 'order': {
+          // The host's own order round the table (dragged in the lobby, the user, 2026-10-15). Taken
+          // as far as it names seats; anyone it misses (sat down meanwhile) keeps their place after.
+          requireHost(r, p);
+          requirePhase(r, 'lobby', 'final');
+          if (!Array.isArray(body?.order)) throw new GameError('bad-order');
+          const named = [...new Set(body.order.slice(0, LIMITS.players).map(String))].filter((id) => r.order.includes(id));
+          r.order = [...named, ...r.order.filter((id) => !named.includes(id))];
+          touch(r);
+          return;
+        }
         case 'start': {
           requireHost(r, p);
           requirePhase(r, 'lobby');

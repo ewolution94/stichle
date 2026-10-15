@@ -1,6 +1,7 @@
 <!--
   The host's sheet for one player: seat them at the table or send them to watch, or take them out of
-  the room (a bot: remove it). A bot's sheet sets its rank (the user, 2026-10-14: Apprentice,
+  the room (a bot: remove it), or move their seat one earlier or later (the lobby's grips do it by
+  dragging; this is the way without one, for the keyboard and VoiceOver). A bot's sheet sets its rank (the user, 2026-10-14: Apprentice,
   Journeyman, Master) and names its temperament, which comes with its name. It stays open while the
   move waits at the tapped button (src/lib/waits.ts), and shows why when it fails.
 -->
@@ -13,7 +14,10 @@
     player,
     seated,
     full,
+    place = 0,
+    places = 0,
     onseat,
+    onshift,
     onremove,
     onlevel,
     onclose,
@@ -22,7 +26,12 @@
     player: Player | null;
     seated: boolean;
     full: boolean;
+    /** Their seat, from 1 (0: not seated), of how many. */
+    place?: number;
+    places?: number;
     onseat: (seated: boolean, from: Event) => void;
+    /** One seat earlier (-1) or later (+1); the sheet stays open. */
+    onshift?: (by: number) => void;
     onremove: (from: Event) => void;
     /** A bot's own rank. */
     onlevel: (level: Level, from: Event) => void;
@@ -72,6 +81,13 @@
         </div>
         <p class="temper"><span class="label">{t('temperament')}</span> {t(`temper_${shown.temper ?? 'steady'}`)}</p>
       {/if}
+      {#if seated && place > 0 && places > 1}
+        <span class="label">{t('seatOf', { n: place, of: places })}</span>
+        <div class="steps">
+          <button class="btn" type="button" disabled={place <= 1} onclick={() => onshift?.(-1)}>{t('seatEarlier')}</button>
+          <button class="btn" type="button" disabled={place >= places} onclick={() => onshift?.(1)}>{t('seatLater')}</button>
+        </div>
+      {/if}
       {#if !shown.bot}
         {#if seated}
           <button class="btn block" type="button" onclick={(e) => onseat(false, e)}>{t('makeWatch')}</button>
@@ -94,6 +110,17 @@
   }
   .danger {
     color: var(--bad);
+  }
+  /* One seat earlier, one later: side by side, each half the sheet. */
+  .steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .steps .btn {
+    min-width: 0;
+    padding-inline: 10px;
   }
   .levels {
     display: flex;

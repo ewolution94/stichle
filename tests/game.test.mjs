@@ -298,6 +298,24 @@ test('the host swaps seats; settings keep only what is valid', () => {
   assert.equal(r.pages[0].view.settings.clock, 'relaxed');
 });
 
+test('the host puts the seats in their own order; the others cannot', () => {
+  const { games } = setup(13);
+  const r = room(games, 4);
+  const before = r.pages[0].view.order;
+  const wanted = [before[3], before[0], before[4], before[1], before[2]];
+  r.act(r.host, 'order', { order: wanted });
+  assert.deepEqual(r.pages[0].view.order, wanted);
+  // A partial order keeps everyone: the named first, the rest after in their places; unknown ids drop.
+  r.act(r.host, 'order', { order: [wanted[2], 'nobody', wanted[2]] });
+  assert.deepEqual(r.pages[0].view.order, [wanted[2], wanted[0], wanted[1], wanted[3], wanted[4]]);
+  assert.equal(code(() => r.act(r.seats[1], 'order', { order: before })), 'not-host');
+  assert.equal(code(() => r.act(r.host, 'order', { order: 'x' })), 'bad-order');
+  // The game's seats follow the lobby's order.
+  const order = r.pages[0].view.order;
+  r.act(r.host, 'start');
+  assert.deepEqual(r.pages[0].view.game.seats, order);
+});
+
 // ---- house rules (R2) --------------------------------------------------------------------
 
 /** A turned Wizard: the dealer (a person here) picks a suit. */
