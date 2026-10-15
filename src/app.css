@@ -24,7 +24,8 @@
 
 :root,
 :root[data-theme='dark'] {
-  color-scheme: light;
+  /* "only": no forced dark from the browser (Android's auto dark mode made the paper dark). */
+  color-scheme: only light;
   --ewo-light: 1;
 
   /* The room and the table (each player's own, see "the tables" below): the bar takes the room's
