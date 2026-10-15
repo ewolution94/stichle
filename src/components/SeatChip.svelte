@@ -77,13 +77,14 @@
   /* A place card, as at a banquet: the cards' own paper with their double rule, the player's seal
      pressed onto it, name and score in ink. Solid, so nothing of the table shows through. Whose
      turn it is: a gold edge, lifted a little off the cloth. */
+  /* A little more room all round, and most between the bid and the score (the user, 2026-10-15). */
   .seat {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
-    padding: 6px 12px 6px 6px;
+    padding: 7px 14px 7px 7px;
     border-radius: 12px;
     background: var(--paper);
     color: var(--ink);
@@ -119,9 +120,9 @@
   /* At the far side of the table: upright, the seal standing out over the top edge. */
   .seat.compact {
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     margin-top: 16px;
-    padding: 22px 6px 7px;
+    padding: 23px 10px 9px;
     text-align: center;
   }
   .compact .face {
@@ -169,7 +170,7 @@
     z-index: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     min-width: 0;
   }
   .compact .info {
@@ -193,11 +194,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* One height whatever it shows: the ✓ of a secret bid comes from a fallback font whose line is
+     taller, and the place card grew 7 px with it in Chromium. */
   .line {
     display: flex;
     align-items: center;
-    gap: 6px;
-    min-height: 15px;
+    gap: 12px;
+    height: 15px;
   }
   .bid {
     display: inline-flex;

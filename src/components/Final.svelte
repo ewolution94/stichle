@@ -252,6 +252,11 @@
     align-items: center;
     gap: 8px;
   }
+  /* The two ways on, a pair: the same type as "Again" (the user, 2026-10-15: one font for both). */
+  .actions .btn.paper.block {
+    font: 700 18px / 1 var(--display);
+    letter-spacing: 0.02em;
+  }
   .wait {
     margin: 0;
     color: var(--on-cloth-2);
