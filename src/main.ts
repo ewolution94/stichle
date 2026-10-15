@@ -5,7 +5,6 @@ import '../vendor/ewo/elements/settings-button.js';
 import '../vendor/ewo/elements/sheet.js';
 import '../vendor/ewo/elements/guide.js';
 import '../vendor/ewo/elements/segmented.js';
-import '../vendor/ewo/elements/switch.js';
 import '../vendor/ewo/elements/emblem.js';
 import '../vendor/ewo/elements/emblem-maker.js';
 import '../vendor/ewo/elements/connection.js';

@@ -188,14 +188,20 @@
       {/if}
       <div class="row">
         <span class="name">{t('soundsHint')}</span>
-        <ewo-switch
-          checked={sound.on}
-          aria-label={t('sounds')}
+        <!-- A pill switch like the rows above (the user, 2026-10-15), off first: sounds start off. -->
+        <ewo-segmented
+          stretch
+          value={sound.on ? 'on' : 'off'}
+          label={t('sounds')}
           onchange={(e) => {
-            setSound(e.detail.checked);
-            if (e.detail.checked) play.won();
+            const on = e.detail.value === 'on';
+            setSound(on);
+            if (on) play.won();
           }}
-        ></ewo-switch>
+        >
+          <option value="off">{t('sound_off')}</option>
+          <option value="on">{t('sound_on')}</option>
+        </ewo-segmented>
       </div>
     </section>
   {/if}
