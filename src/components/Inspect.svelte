@@ -1,7 +1,8 @@
 <!--
   A card held up to look at: big, on a dark stage, tilting with the phone (src/lib/tilt.ts; iOS asks
   once, from the hold that opened it), with a finger, or towards the mouse, the foil moving with
-  the light. Opened by holding a card in your hand, or by tapping the trump card.
+  the light. Opened by holding a card in your hand, or by tapping the trump card; closed with the
+  button, Escape, or a tap anywhere around the card (the user, 2026-10-15).
 -->
 <script lang="ts">
   import { fromId, nameOf } from '../lib/deck';
@@ -15,12 +16,25 @@
   $effect(() => {
     if (card) closeButton?.focus();
   });
+  // A tap around the card closes it: one that starts and ends there (the hold that opened the view
+  // ends over it too, and mustn't close it again).
+  let aside = false;
+  const around = (e: Event) => !(e.target instanceof Element && e.target.closest('.big, button'));
 </script>
 
 <svelte:window onkeydown={(e) => card && e.key === 'Escape' && onclose()} />
 
 {#if card}
-  <div class="stage" role="dialog" aria-modal="true" aria-label={nameOf(fromId(card), i18n.lang)}>
+  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+  <div
+    class="stage"
+    role="dialog"
+    aria-modal="true"
+    aria-label={nameOf(fromId(card), i18n.lang)}
+    tabindex="-1"
+    onpointerdown={(e) => (aside = around(e))}
+    onclick={(e) => aside && around(e) && onclose()}
+  >
     <div class="top">
       <span class="name">{nameOf(fromId(card), i18n.lang)}</span>
       <button class="btn paper small" type="button" bind:this={closeButton} onclick={onclose}>{t('close')}</button>
@@ -48,6 +62,10 @@
     color: var(--on-cloth);
     animation: fade 0.2s ease-out both;
     touch-action: none;
+    /* Nothing here to select: a long press on the hint mustn't mark it (the user, 2026-10-15). */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
   @keyframes fade {
     from {

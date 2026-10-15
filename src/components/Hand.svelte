@@ -57,7 +57,7 @@
   let width = $state(360);
   let sel: string | null = $state(null);
   /** The card in the air: still drawn here until it has landed, but out of the fan. */
-  let air = $state<{ card: string; transform: string; landed: boolean } | null>(null);
+  let air = $state<{ card: string; transform: string; landed: boolean; at: number } | null>(null);
   let shaking: string | null = $state(null);
   /** The card under a finger that's dragging it, and where it is. */
   let drag = $state<Dragged | null>(null);
@@ -68,10 +68,15 @@
     return { destroy: () => els.delete(card) };
   }
 
-  // A selected card that left the hand (played, by you or the bot) is no longer selected.
+  // A selected card that left the hand (played, by you or the bot) is no longer selected; nor one
+  // lifted once your move is over. While it isn't your move, a card neither lifts nor drags (the user,
+  // 2026-10-15: "irritating"); holding one to look at it still works.
   $effect(() => {
-    if (sel && !cards.includes(sel)) sel = null;
+    if (sel && (!cards.includes(sel) || !canPlay)) sel = null;
   });
+  const lift = (card: string | null) => {
+    if (canPlay) sel = card;
+  };
   // A lifted card drops back when you tap or click anywhere but the hand, or press Escape (the user,
   // 2026-10-13: on a laptop there was no way to put it down again).
   $effect(() => {
@@ -94,7 +99,10 @@
     if (air?.landed && !cards.includes(air.card)) air = null;
   });
   /** Drawn in a steady order, so the card in the air keeps its element (and its transition). */
-  const list = $derived(air && !cards.includes(air.card) ? [...cards, air.card] : cards);
+  // At the place it left, not at the end: moving its element in the page would cancel its flight,
+  // and the card snapped to the table as soon as the server took the move (the user, 2026-10-15:
+  // "the card jumps slightly in size when laying down on the stack").
+  const list = $derived(air && !cards.includes(air.card) ? [...cards.slice(0, air.at), air.card, ...cards.slice(air.at)] : cards);
 
   // The fan from Folio's card kit (card-fan.js): few cards are held bigger, a full hand shrinks to
   // fit (never below 62 px) and goes to two rows; a laptop's wider table lets them grow a little.
@@ -126,7 +134,7 @@
     const gestures = handGestures(box, {
       fan: () => layout,
       lifted: () => sel,
-      lift: (card) => (sel = card),
+      lift,
       enabled: () => !air && fan.length > 0,
       canPlay: () => canPlay,
       playable: (card) => legal.includes(card),
@@ -155,7 +163,7 @@
     const el = els.get(card);
     const to = target(card);
     if (box && el && to) {
-      air = { card, landed: false, transform: flightTransform(layout, box.getBoundingClientRect(), to) };
+      air = { card, landed: false, transform: flightTransform(layout, box.getBoundingClientRect(), to), at: Math.max(0, list.indexOf(card)) };
       flying(card, FLY_MS);
       setTimeout(() => {
         if (air?.card === card) air = { ...air, landed: true };
@@ -185,10 +193,10 @@
         const card = fan[e.key === '0' ? 9 : Number(e.key) - 1];
         if (!card) return;
         e.preventDefault();
-        sel = card;
+        lift(card);
         tryPlay(card);
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        if (!fan.length) return;
+        if (!fan.length || !canPlay) return;
         e.preventDefault();
         const now = sel ? fan.indexOf(sel) : -1;
         sel = fan[e.key === 'ArrowRight' ? (now + 1) % fan.length : now <= 0 ? fan.length - 1 : now - 1];
@@ -204,7 +212,7 @@
   function key(e: MouseEvent, card: string) {
     // Taps arrive as pointer events (the kit's gestures); this is Enter or Space on a focused card.
     if (e.detail !== 0) return;
-    sel = card;
+    lift(card);
     tryPlay(card);
   }
 </script>
