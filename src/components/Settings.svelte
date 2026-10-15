@@ -11,7 +11,7 @@
   import { ApiError } from '../lib/api';
   import { errorText, i18n, setLanguage, systemLang, t, type LangChoice } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { prefs, setArt, setHand, setSize, type HandLayout } from '../lib/prefs.svelte';
+  import { prefs, setArt, setHand, setSeats, setSize, type HandLayout, type Seating } from '../lib/prefs.svelte';
   import type { TableSize } from '../lib/table';
   import type { Art } from '../lib/deck';
   import { play, setSound, sound } from '../lib/sound.svelte';
@@ -155,6 +155,14 @@
         <ewo-segmented stretch value={prefs.art} label={t('cardArt')} onchange={(e) => setArt(e.detail.value as Art)}>
           <option value="figures">{t('art_figures')}</option>
           <option value="classic">{t('art_classic')}</option>
+        </ewo-segmented>
+      </div>
+      <!-- Where the other players' place cards are (the user, 2026-10-15): round the table, or on a board. -->
+      <div class="row">
+        <span class="name">{t('seating')}</span>
+        <ewo-segmented stretch value={prefs.seats} label={t('seating')} onchange={(e) => setSeats(e.detail.value as Seating)}>
+          <option value="table">{t('seating_table')}</option>
+          <option value="board">{t('seating_board')}</option>
         </ewo-segmented>
       </div>
       {#if desk}

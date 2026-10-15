@@ -10,7 +10,7 @@
   import { fromId, nameOf, SUITS, type Suit } from '../lib/deck';
   import { errorText, i18n, t, suitName } from '../lib/i18n.svelte';
   import type { Room } from '../lib/room.svelte';
-  import { angleOf, BEATS, deskScale, orderHand, slotOffset, trickCardWidth, trickPhase, twist } from '../lib/table';
+  import { angleOf, BEATS, deskScale, orderHand, seatSpot, slotOffset, trickCardWidth, trickPhase, twist } from '../lib/table';
   import { prefs } from '../lib/prefs.svelte';
   import { actAt } from '../lib/waits';
   import { askTilt } from '../lib/tilt';
@@ -36,6 +36,43 @@
   const playerAt = (seat: number) => view.players.find((p) => p.id === game.seats[seat]);
   /** The other seats, in the order play goes from yours. */
   const others = $derived(Array.from({ length: n - 1 }, (_, i) => (home + 1 + i) % n));
+
+  // Where the other players' place cards are (Settings → Players; the user, 2026-10-15): round the
+  // table, each on the rail where they sit (B, the default), or on a board above the cloth (C).
+  const onBoard = $derived(prefs.seats === 'board');
+  /** Everyone on the board, in playing order from your left, you last. */
+  const boardOrder = $derived([...others, home]);
+  let clothW = $state(360);
+  let clothH = $state(480);
+  /**
+   * Round the table: each seat on the rail its direction from the middle meets (the trick's own,
+   * angleOf → seatSpot). The far rail's cards share its width evenly (narrow cards with their names
+   * on two lines when three are there); a side rail's card is narrow, a little below the corners. A
+   * little may reach past the cloth's edge, never off the screen. Positions in px over the cloth.
+   */
+  function seatSpots(w: number, h: number, wide: number, narrowW: number, reach: number, narrowSides = true) {
+    const raw = others.map((seat) => ({ seat, ...seatSpot(angleOf(seat, mine, n)) }));
+    const far = raw.filter((p) => !p.side);
+    const k = far.length;
+    const farW = Math.min(wide, Math.floor((w + 2 * reach - (k - 1) * 6) / Math.max(1, k)));
+    const lo = farW / 2 - reach;
+    const hi = w - farW / 2 + reach;
+    return raw.map((p) => {
+      if (p.side) {
+        const x = p.x < 0 ? narrowW / 2 - reach : w - narrowW / 2 + reach;
+        const y = Math.min(Math.max(h / 2 + (p.y * h) / 2, h * 0.28), h * 0.7);
+        return { seat: p.seat, side: true, narrow: narrowSides, x: Math.round(x), y: Math.round(y), w: narrowW };
+      }
+      const i = far.indexOf(p);
+      const x = k === 1 ? w / 2 : lo + ((hi - lo) * i) / (k - 1);
+      // Over the far rail, a little in from it: clear of the bar above.
+      return { seat: p.seat, side: false, narrow: farW < 130, x: Math.round(x), y: 6, w: farW };
+    });
+  }
+  const spots = $derived(seatSpots(clothW, clothH, 150, 112, 12));
+  // The desktop table has room enough: its side rails take the full card, inside the cloth.
+  let deskW = $state(1200);
+  let deskH = $state(700);
   const turnName = $derived(playerAt(game.turn)?.name ?? '');
   const myTurn = $derived(mine >= 0 && game.phase === 'round' && game.stage !== 'done' && game.waiting.includes(mine));
   const secret = $derived(game.bidding === 'secret');
@@ -119,6 +156,7 @@
   const scale = $derived(desk ? deskScale(win.w, win.h, prefs.size) : 1);
   /** The largest a card on the desktop table's pile may be. */
   const DESK_CAP = $derived(150 * scale);
+  const deskSpots = $derived(seatSpots(deskW, deskH, 220 * scale, 220 * scale, -18 * scale, false));
   /** The house rules this game plays with, for the desktop table's bar (only what isn't the original). */
   const rules = $derived(
     [
@@ -326,22 +364,37 @@
     </div>
   </header>
 
-  <div class="desk-room">
-    <div class="felt desk-cloth">
-      <!-- The others across the far side, each bid lying as coins in front of them. -->
-      <div class="desk-seats" style:--count={others.length}>
-        {#each others as seat (seat)}
-          <div class="desk-seat">
-            <SeatChip {game} {seat} player={playerAt(seat)} showBid={false} rank />
-            <div class="desk-under">
-              <BidCoins bid={game.bids[seat]} won={game.won[seat] ?? 0} bidding={game.stage === 'bid' && game.waiting.includes(seat)} hidden={game.bidIn[seat] && game.bids[seat] === null} />
-              {#if game.foreheads?.[seat]}
-                <span class="desk-brow" aria-label={t('foreheadOf', { name: playerAt(seat)?.name ?? '', card: nameOf(fromId(game.foreheads[seat]), i18n.lang) })}><Card id={game.foreheads[seat]} /></span>
-              {/if}
-            </div>
+  <div class="desk-room" class:boarded={onBoard}>
+    {#if onBoard}
+      <!-- The board above the cloth: everyone in playing order, you last (the pick C). -->
+      <div class="desk-boardrow">
+        {#each boardOrder as seat (seat)}
+          <div class="desk-tile tile">
+            <SeatChip {game} {seat} player={playerAt(seat)} me={seat === mine} board rank />
+            {#if seat !== mine && game.foreheads?.[seat]}
+              <span class="tile-brow" aria-label={t('foreheadOf', { name: playerAt(seat)?.name ?? '', card: nameOf(fromId(game.foreheads[seat]), i18n.lang) })}><Card id={game.foreheads[seat]} /></span>
+            {/if}
           </div>
         {/each}
       </div>
+    {/if}
+    <div class="felt desk-cloth" class:ringed={!onBoard} bind:clientWidth={deskW} bind:clientHeight={deskH}>
+      {#if !onBoard}
+        <!-- Round the table: each other player on the rail where they sit, their bid as coins in front of them (the pick B). -->
+        {#each deskSpots as spot (spot.seat)}
+          <div class="desk-spot" style:left="{spot.x}px" style:top="{spot.y}px">
+            <div class="desk-seat">
+              <SeatChip {game} seat={spot.seat} player={playerAt(spot.seat)} showBid={false} rank />
+              <div class="desk-under">
+                <BidCoins bid={game.bids[spot.seat]} won={game.won[spot.seat] ?? 0} bidding={game.stage === 'bid' && game.waiting.includes(spot.seat)} hidden={game.bidIn[spot.seat] && game.bids[spot.seat] === null} />
+                {#if game.foreheads?.[spot.seat]}
+                  <span class="desk-brow" aria-label={t('foreheadOf', { name: playerAt(spot.seat)?.name ?? '', card: nameOf(fromId(game.foreheads[spot.seat]), i18n.lang) })}><Card id={game.foreheads[spot.seat]} /></span>
+                {/if}
+              </div>
+            </div>
+          </div>
+        {/each}
+      {/if}
 
       <!-- The deck and the turned trump, lying on the table as at a real one. -->
       <button class="desk-deck" type="button" onclick={() => game.trumpCard && inspect(game.trumpCard)} aria-label={game.trump ? t('trumpIs', { suit: suitName(game.trump) }) : t('noTrump')}>
@@ -381,8 +434,8 @@
       <!-- You: your place card, your bid as coins, the order of your hand. -->
       <div class="desk-me">
         <span class="desk-sort">{#if mine >= 0 && game.hand && game.hand.length > 1}<SortToggle />{/if}</span>
-        {#if mine >= 0 || n > 0}<SeatChip {game} seat={home} player={playerAt(home)} me={mine >= 0} showBid={false} rank />{/if}
-        <BidCoins bid={game.bids[home]} won={game.won[home] ?? 0} bidding={game.stage === 'bid' && game.waiting.includes(home) && mine < 0} hidden={game.bidIn[home] && game.bids[home] === null} />
+        {#if !onBoard && (mine >= 0 || n > 0)}<SeatChip {game} seat={home} player={playerAt(home)} me={mine >= 0} showBid={false} rank />{/if}
+        {#if !onBoard}<BidCoins bid={game.bids[home]} won={game.won[home] ?? 0} bidding={game.stage === 'bid' && game.waiting.includes(home) && mine < 0} hidden={game.bidIn[home] && game.bids[home] === null} />{/if}
       </div>
 
       <div class="desk-hand">
@@ -432,22 +485,37 @@
     </div>
   </header>
 
-  <div class="felt cloth">
-  <div class="seats" style:--count={others.length}>
-    {#each others as seat, i (seat)}
-      <div class="far" style:--lift="{Math.round((1 - Math.sin(((i + 1) / (others.length + 1)) * Math.PI)) * 14)}px">
-        <SeatChip {game} {seat} player={playerAt(seat)} compact />
-        <span class="held" aria-label={game.foreheads?.[seat] ? t('foreheadOf', { name: playerAt(seat)?.name ?? '', card: nameOf(fromId(game.foreheads[seat]), i18n.lang) }) : t('cardsLeft', { n: game.counts[seat] })}>
-          {#if game.foreheads?.[seat]}
-            <!-- The forehead round: their card held up for everyone else to see, over the felt (the row keeps its height). -->
-            <span class="brow"><Card id={game.foreheads[seat]} /></span>
+  {#if onBoard}
+    <!-- The board above the cloth: everyone in playing order, you last (the pick C). -->
+    <div class="boardrow" style:--cols={Math.min(3, n)}>
+      {#each boardOrder as seat (seat)}
+        <div class="tile">
+          <SeatChip {game} {seat} player={playerAt(seat)} me={seat === mine} board />
+          {#if seat !== mine && game.foreheads?.[seat]}
+            <span class="tile-brow" aria-label={t('foreheadOf', { name: playerAt(seat)?.name ?? '', card: nameOf(fromId(game.foreheads[seat]), i18n.lang) })}><Card id={game.foreheads[seat]} /></span>
+          {/if}
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  <div class="felt cloth" class:open={onBoard} bind:clientWidth={clothW} bind:clientHeight={clothH}>
+  {#if !onBoard}
+    <!-- Round the table: each other player on the rail where they sit (the pick B). -->
+    {#each spots as spot (spot.seat)}
+      <div class="spot" style:left="{spot.x}px" style:top="{spot.y}px" style:--w="{spot.w}px">
+        <SeatChip {game} seat={spot.seat} player={playerAt(spot.seat)} narrow={spot.narrow} />
+        <span class="held" aria-label={game.foreheads?.[spot.seat] ? t('foreheadOf', { name: playerAt(spot.seat)?.name ?? '', card: nameOf(fromId(game.foreheads[spot.seat]), i18n.lang) }) : t('cardsLeft', { n: game.counts[spot.seat] })}>
+          {#if game.foreheads?.[spot.seat]}
+            <!-- The forehead round: their card held up for everyone else to see, over the felt. -->
+            <span class="brow"><Card id={game.foreheads[spot.seat]} /></span>
           {:else}
-            {#each { length: Math.min(game.counts[seat], 7) } as _, k (k)}<i style:--k={k - (Math.min(game.counts[seat], 7) - 1) / 2}></i>{/each}
+            {#each { length: Math.min(game.counts[spot.seat], 7) } as _, k (k)}<i style:--k={k - (Math.min(game.counts[spot.seat], 7) - 1) / 2}></i>{/each}
           {/if}
         </span>
       </div>
     {/each}
-  </div>
+  {/if}
 
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div class="middle" class:tappable={pile} bind:this={trickEl} role={pile ? 'button' : undefined} tabindex={pile ? 0 : undefined} aria-label={pile ? t('trickOverview') : undefined} onclick={tapPile} onkeydown={tapPile}>
@@ -456,13 +524,13 @@
   </div>
   </div>
 
-  <div class="dock">
+  <div class="dock" class:bare={onBoard}>
     {@render notice()}
 
     {@render panels()}
 
     <div class="mine">
-      {#if mine >= 0 || n > 0}<SeatChip {game} seat={home} player={playerAt(home)} me={mine >= 0} />{/if}
+      {#if !onBoard && (mine >= 0 || n > 0)}<SeatChip {game} seat={home} player={playerAt(home)} me={mine >= 0} />{/if}
       {#if mine >= 0 && game.hand && game.hand.length > 1}<span class="sorter"><SortToggle /></span>{/if}
     </div>
 
@@ -606,34 +674,60 @@
   }
   /* The cloth on the table: from under the bar to your seat, which sits on its near edge. Its size
      comes from the screen alone: the bar and the dock below keep fixed heights, and whatever comes
-     and goes (the status, the bid, the trump pick) floats over it. */
+     and goes (the status, the bid, the trump pick) floats over it. Round the table (B) the others'
+     cards sit on its rail, the far ones over its top edge: the pile's room starts under them. */
   .cloth {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
     margin: 22px 6px -30px;
-    padding: 18px 12px 34px;
+    padding: 50px 12px 34px;
   }
-  /* The far side of the table: the middle seat furthest away, the outer ones a little nearer, like
-     chairs round a table. */
-  .seats {
-    display: grid;
-    grid-template-columns: repeat(var(--count), minmax(0, 1fr));
-    gap: 6px;
-    padding-bottom: 14px;
+  /* On the board (C) the cloth holds nobody's card: only the trick, and room for it. */
+  .cloth.open {
+    margin: 12px 6px 8px;
+    padding: 16px 12px;
   }
-  .far {
+  /* A seat round the table: its card centred on the rail it faces (on the far rail half over it), its
+     hand face down under the card. */
+  .spot {
+    position: absolute;
+    z-index: 2;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    min-width: 0;
-    translate: 0 var(--lift);
+    translate: -50% -26px;
   }
-  .far :global(.seat) {
-    width: 100%;
-    max-width: 120px;
+  .spot :global(.seat) {
+    width: var(--w);
+  }
+  /* The board above the cloth: a dark plaque with everyone's small card, three to a row. */
+  .boardrow {
+    flex: none;
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    gap: 6px;
+    margin: 10px 0 0;
+    padding: 7px;
+    border-radius: 16px;
+    background: rgb(18 11 7 / 0.55);
+    box-shadow: inset 0 0 0 1px rgb(236 230 214 / 0.08);
+  }
+  .tile {
+    position: relative;
+    min-width: 0;
+  }
+  /* The forehead round on the board: their card in the corner of their place card. */
+  .tile-brow {
+    position: absolute;
+    z-index: 3;
+    right: 6px;
+    top: -6px;
+    width: 26px;
+    rotate: 6deg;
+    filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.5));
   }
   /* The forehead round: their one card, face up, held where their hand would be. */
   .brow {
@@ -863,6 +957,21 @@
     display: flex;
     justify-content: center;
   }
+  /* On the board (C) your card is up there with the others: the row keeps only the sort button, on
+     its own line under the cloth, and the status floats inside the cloth's near edge. */
+  .bare .mine {
+    justify-content: flex-end;
+    min-height: 40px;
+    align-items: center;
+  }
+  .bare .sorter {
+    position: static;
+    margin-right: 6px;
+  }
+  .bare .status,
+  .bare .toast {
+    bottom: calc(100% + 20px);
+  }
   /* The hand's order, at the row's far end, just under the cloth's rail (never on its stitching) and
      above the hand's own room: out of the way, and nothing moves when it shows. Over the hand's box,
      which starts above its cards: a tap on the toggle's lower half went to the hand and lifted a card
@@ -952,12 +1061,40 @@
     grid-template-rows: auto minmax(0, 1fr) auto;
     padding: calc(26px * var(--scale)) calc(26px * var(--scale)) calc(6px * var(--scale));
   }
-  /* The others across the far side. */
-  .desk-seats {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(var(--count), minmax(0, 1fr));
-    justify-items: center;
+  /* Round the table (B): the far rail's cards over it, a side rail's inside it, the pile's room
+     starting under the far ones. */
+  .desk-cloth.ringed {
+    padding-top: calc(80px * var(--scale));
+  }
+  /* The deck and the last trick lie lower, clear of a side rail's card and its coins. */
+  .ringed .desk-deck,
+  .ringed .desk-side {
+    align-self: end;
+    margin-bottom: calc(24px * var(--scale));
+  }
+  .desk-spot {
+    position: absolute;
+    z-index: 4;
+    translate: -50% calc(-27px * var(--scale));
+  }
+  /* On the board (C): a row of small cards above the cloth, everyone in playing order. */
+  .desk-room.boarded {
+    flex-direction: column;
+    gap: calc(14px * var(--scale));
+  }
+  .desk-boardrow {
+    flex: none;
+    align-self: center;
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 16px;
+    background: rgb(18 11 7 / 0.55);
+    box-shadow: inset 0 0 0 1px rgb(236 230 214 / 0.08);
+    zoom: var(--scale);
+  }
+  .desk-tile {
+    width: 190px;
   }
   .desk-seat {
     display: flex;

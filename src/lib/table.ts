@@ -79,6 +79,23 @@ export const slotOffset = (angle: number, cardWidth: number) => trickSlot(angle,
 export const sweepOffset = (angle: number, w: number, h: number) => sweepTo(angle, w, h);
 
 /**
+ * Where a seat sits on the rail, round the table (the user's pick B, 2026-10-15): its direction from
+ * the middle (angleOf, the same the trick's cards lean towards) carried out to the edge of a square,
+ * then stretched to the cloth, so the seats spread over the side rails and the far one alike instead
+ * of crowding the long edge. x and y from -1 to 1 across the cloth; `side` on a side rail (a narrow
+ * card there), else on the far rail or its corner.
+ */
+export function seatSpot(angle: number) {
+  const r = (angle * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  const k = 1 / Math.max(Math.abs(c), Math.abs(s));
+  const x = Math.round(c * k * 1000) / 1000 || 0;
+  const y = Math.round(s * k * 1000) / 1000 || 0;
+  return { x, y, side: Math.abs(x) === 1 && y > -1 };
+}
+
+/**
  * Your hand in the order you chose (the sort button, 2026-10-14), the strongest always on the left
  * (the user, 2026-10-15): `suit` in the server's groups (the Drache and the Wizards, the trump suit,
  * the other suits, the Jesters, the Fee and the Dieb last), each suit high to low; `strength`

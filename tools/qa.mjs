@@ -10,6 +10,7 @@
 //   LENGTH=half|short, TEMPO=fast, FOREHEAD=1, SPECIALS=1, BOTS=apprentice|journeyman|master (their rank),
 //   SIZE=auto|1|1.25|1.5 (the desktop table's
 //   size), BROWSER=chromium (WebKit by default; the desktop table's zoom differs between the two),
+//   SEATS=table|board (the players round the table, or on a board above it),
 //   LANG_UI=en (German by default), AUDIT=1 (every shot also checks that text sits in the middle of
 //   its box and keeps its digits: tools/text-audit.mjs, plans/text-centering.md; plus home, the
 //   guide, Settings and the join page)
@@ -61,12 +62,13 @@ async function person(name) {
   // The service worker fetches past context.route, so with it running the held font would arrive on
   // time and SLOWFONT would test nothing (Stammtisch found it, 2026-10-14).
   const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, serviceWorkers: SLOWFONT ? 'block' : 'allow' });
-  await context.addInitScript(([size, lang]) => {
+  await context.addInitScript(([size, lang, seats]) => {
     try {
       localStorage.setItem('ewo:lang', lang);
       // The how-to opens on a first visit (Guide.svelte); these players have read it.
       localStorage.setItem('stichle:guide', '1');
       if (size) localStorage.setItem('stichle:size', size);
+      if (seats) localStorage.setItem('stichle:seats', seats);
     } catch {}
     // Every press, for the stall report: what it landed on, and whether that's inside the hand.
     window.__downs = [];
@@ -119,7 +121,7 @@ async function person(name) {
       requestAnimationFrame(look);
     };
     requestAnimationFrame(look);
-  }, [process.env.SIZE ?? '', LANG]);
+  }, [process.env.SIZE ?? '', LANG, process.env.SEATS ?? '']);
   if (SLOWFONT) await context.route('**/stichle-display-*.woff2', async (route) => {
     await new Promise((r) => setTimeout(r, SLOWFONT));
     await route.continue();

@@ -369,6 +369,9 @@ const STRINGS = {
     hand_flat: 'Ausgelegt',
     hand_fan: 'Gefächert',
     tableSize: 'Tischgröße',
+    seating: 'Mitspieler',
+    seating_table: 'Am Tisch',
+    seating_board: 'An der Tafel',
     size_auto: 'Auto',
 
     wait_create: 'Tisch wird gedeckt …',
@@ -731,6 +734,9 @@ const STRINGS = {
     hand_flat: 'Laid out',
     hand_fan: 'Fanned',
     tableSize: 'Table size',
+    seating: 'Players',
+    seating_table: 'Round the table',
+    seating_board: 'On a board',
     size_auto: 'Auto',
 
     wait_create: 'Setting the table …',

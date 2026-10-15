@@ -3,6 +3,11 @@
   (pips that fill, gold when the bid is met, red once it's overshot), their score, and whose move
   it is (a gold ring; the move's clock runs in the bar over the table, Clock.svelte). The dealer
   carries a small deck; whoever plays the round's first card carries a gold tag until it's played.
+
+  Its shapes: on its side (the default: everyone round the table, the user's pick B, 2026-10-15),
+  `narrow` on a side rail (the name on two lines rather than cut), upright `compact` (the big
+  screen), and `board`, a small card on the board above the cloth (the pick C): the seal and the name
+  above, the score large under them, the bid beside it.
 -->
 <script lang="ts">
   import type { Game, Player } from '../lib/api';
@@ -17,6 +22,8 @@
     player,
     me = false,
     compact = false,
+    narrow = false,
+    board = false,
     showBid = true,
     rank = false,
   }: {
@@ -25,6 +32,10 @@
     player: Player | undefined;
     me?: boolean;
     compact?: boolean;
+    /** On a side rail: a narrow card, the name on up to two lines. */
+    narrow?: boolean;
+    /** A small card on the board above the cloth. */
+    board?: boolean;
     /** The bid as pips on the card; the desktop table lays it on the felt as coins instead (BidCoins). */
     showBid?: boolean;
     /** A bot's rank beside its name: on the desktop table and the big screen, not on the phone (the
@@ -42,9 +53,9 @@
   const pips = $derived(Math.max(bidValue ?? 0, won));
 </script>
 
-<div class="seat" class:active class:me class:compact class:opens class:gone={game.gone[seat] || (player && !player.online)}>
+<div class="seat" class:active class:me class:compact class:narrow class:onboard={board} class:opens class:gone={game.gone[seat] || (player && !player.online)}>
   <div class="face">
-    {#if player}<Avatar avatar={player.avatar} size={compact ? 30 : 36} />{/if}
+    {#if player}<Avatar avatar={player.avatar} size={board ? 24 : compact || narrow ? 30 : 36} />{/if}
     {#if dealer}<span class="dealer" title={t('dealer')} aria-label={t('dealer')}></span>{/if}
   </div>
   <div class="info">
@@ -285,5 +296,71 @@
       opacity: 0;
       scale: 0.6;
     }
+  }
+  /* On a side rail: narrow, the name on two lines rather than cut short. */
+  .seat.narrow {
+    gap: 7px;
+    padding: 7px 10px 7px 7px;
+  }
+  .narrow .name {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  /* On the board: the seal and the name in a row, the score large under them, the bid beside it. */
+  .seat.onboard {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'face who'
+      'line line';
+    align-items: center;
+    gap: 6px 7px;
+    width: 100%;
+    box-sizing: border-box;
+    /* Two pixels more below: the score's line stands low (measured: tools/text-audit.mjs → stackAudit). */
+    padding: 6px 10px 10px 8px;
+    border-radius: 10px;
+  }
+  .onboard .face {
+    grid-area: face;
+  }
+  .onboard .info {
+    display: contents;
+  }
+  .onboard .who {
+    grid-area: who;
+    min-width: 0;
+  }
+  /* The name whole, on two lines if it must (six to a board on a phone). */
+  .onboard .name {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .onboard .dealer {
+    right: -4px;
+    bottom: -3px;
+    width: 9px;
+    height: 12px;
+  }
+  .onboard .line {
+    grid-area: line;
+    justify-content: space-between;
+    height: 22px;
+  }
+  .onboard .total {
+    order: -1;
+    font-size: 22px;
+    font-weight: 400;
+  }
+  .onboard .opens-tag {
+    bottom: -8px;
   }
 </style>
