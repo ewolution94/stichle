@@ -24,7 +24,9 @@ test("a trick's beats: rest, reveal, gather, sweep, gone, at either tempo", () =
 
 test('the hand by strength: the Drache, the Wizards, trumps high to low, the rest high to low, the losers last', () => {
   const dealt = ['dragon', 'z-air', 'water-3', 'water-11', 'fire-2', 'fire-13', 'earth-7', 'n-fire', 'fairy', 'thief'];
-  assert.deepEqual(orderHand(dealt, 'water', 'suit'), dealt);
+  // By suit: the server's groups, each suit high to low (the strongest on the left, the user, 2026-10-15).
+  assert.deepEqual(orderHand(dealt, 'water', 'suit'), ['dragon', 'z-air', 'water-11', 'water-3', 'fire-13', 'fire-2', 'earth-7', 'n-fire', 'fairy', 'thief']);
+  assert.deepEqual(orderHand(['air-2', 'fire-9', 'air-12', 'fire-1'], null, 'suit'), ['fire-9', 'fire-1', 'air-12', 'air-2']);
   assert.deepEqual(orderHand(dealt, 'water', 'strength'), ['dragon', 'z-air', 'water-11', 'water-3', 'fire-13', 'earth-7', 'fire-2', 'n-fire', 'fairy', 'thief']);
   assert.deepEqual(orderHand(['fire-2', 'air-9'], null, 'strength'), ['air-9', 'fire-2']);
 });

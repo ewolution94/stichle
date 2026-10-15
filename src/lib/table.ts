@@ -79,13 +79,31 @@ export const slotOffset = (angle: number, cardWidth: number) => trickSlot(angle,
 export const sweepOffset = (angle: number, w: number, h: number) => sweepTo(angle, w, h);
 
 /**
- * Your hand in the order you chose (the sort button, 2026-10-14): `suit` as the server deals it (the
- * Drache and the Wizards, the trump suit, the others, each rising; Jesters, the Fee and the Dieb last);
- * `strength` strongest first across the suits: the Drache, the Wizards, trumps high to low, the other
- * suits high to low, then the cards that never take a trick. Ties keep the suit order.
+ * Your hand in the order you chose (the sort button, 2026-10-14), the strongest always on the left
+ * (the user, 2026-10-15): `suit` in the server's groups (the Drache and the Wizards, the trump suit,
+ * the other suits, the Jesters, the Fee and the Dieb last), each suit high to low; `strength`
+ * strongest first across the suits: the Drache, the Wizards, trumps high to low, the other suits high
+ * to low, then the cards that never take a trick. Ties keep the suit order.
  */
 export function orderHand(cards: string[], trump: string | null, mode: 'suit' | 'strength'): string[] {
-  if (mode !== 'strength') return cards;
+  if (mode !== 'strength') {
+    // The server's order (rules.mjs → sortHand), each suit turned round: high to low.
+    const suits = ['fire', 'water', 'earth', 'air'];
+    const order = trump ? [trump, ...suits.filter((s) => s !== trump)] : suits;
+    const key = (id: string) => {
+      if (id === 'dragon') return -1;
+      if (id === 'fairy') return 1100;
+      if (id === 'thief') return 1200;
+      const [kind, rest] = id.split('-');
+      if (kind === 'z') return suits.indexOf(rest);
+      if (kind === 'n') return 1000 + suits.indexOf(rest);
+      return 100 + order.indexOf(kind) * 20 + (20 - Number(rest));
+    };
+    return cards
+      .map((id, i) => ({ id, i }))
+      .sort((a, b) => key(a.id) - key(b.id) || a.i - b.i)
+      .map((e) => e.id);
+  }
   const worth = (id: string) => {
     if (id === 'dragon') return 200;
     if (id.startsWith('z-')) return 150;

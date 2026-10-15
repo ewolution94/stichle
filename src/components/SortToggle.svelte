@@ -24,31 +24,40 @@
 </button>
 
 <style>
-  /* A small dark plate, like the status line's: it reads on every table and stays out of the way. */
+  /* A dark plate ringed in the cards' gold, the label bright: it reads on the wood under the cloth
+     and on every table, and stays a step quieter than the buttons (the user, 2026-10-15: "hard to
+     see"). 36 px tall, its touch target 44. */
   .sort {
+    position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    min-height: 32px;
-    padding: 0 11px 0 9px;
+    gap: 7px;
+    min-height: 36px;
+    padding: 0 14px 0 11px;
     border: 0;
     border-radius: 999px;
-    background: rgb(18 11 7 / 0.66);
-    color: var(--on-cloth-2);
-    font: 600 12px/1 var(--ewo-sans);
+    background: rgb(18 11 7 / 0.78);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--gold) 80%, transparent);
+    color: var(--on-cloth);
+    font: 650 13px/1 var(--ewo-sans);
     letter-spacing: 0.02em;
     -webkit-tap-highlight-color: transparent;
-    transition: color 0.2s, background-color 0.2s;
+    transition: color 0.2s, background-color 0.2s, box-shadow 0.2s;
+  }
+  .sort::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
   }
   .sort svg {
-    width: 16px;
-    height: 16px;
-    fill: currentColor;
+    width: 18px;
+    height: 18px;
+    fill: var(--gold-hi);
   }
   @media (hover: hover) and (pointer: fine) {
     .sort:hover {
-      color: var(--on-cloth);
-      background: rgb(18 11 7 / 0.82);
+      background: rgb(18 11 7 / 0.92);
+      box-shadow: inset 0 0 0 1.5px var(--gold-hi);
     }
   }
   .sort:active {

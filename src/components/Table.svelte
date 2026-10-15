@@ -831,7 +831,7 @@
   .sorter {
     position: absolute;
     right: 6px;
-    top: calc(100% - 14px);
+    top: calc(100% - 12px);
   }
   .watching {
     margin: 10px 0 18px;
@@ -1098,7 +1098,7 @@
   /* The sort button's place is kept whether it shows or not: your place card never moves. */
   .desk-sort {
     display: block;
-    height: 32px;
+    height: 36px;
   }
   .desk-hand {
     grid-column: 2;
