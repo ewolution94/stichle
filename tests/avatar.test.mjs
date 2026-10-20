@@ -11,7 +11,7 @@ test("the server's ranges are the token emblem's", () => {
 });
 
 test('the server keeps what the emblem keeps, and replaces what it replaces', () => {
-  const cases = [[0, 0, 0], [7, 7, 15], [8, 0, 0], [0, 8, 0], [0, 0, 16], [1, 2], [1.5, 0, 0], '1,2,3', null];
+  const cases = [[0, 0, 0], [7, 7, 15], [8, 0, 0], [0, 8, 0], [0, 0, 16], [13, 13, 23], [14, 0, 0], [0, 14, 0], [0, 0, 24], [1, 2], [1.5, 0, 0], '1,2,3', null];
   for (const raw of cases) {
     const ours = cleanAvatar(raw);
     assert.ok(isEmblem('token', ours), `${JSON.stringify(raw)} → ${ours}`);
