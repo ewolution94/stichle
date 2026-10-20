@@ -80,7 +80,8 @@ everyone at their own screen beside the call. Live at
 npm install
 npm run dev          # http://localhost:6310, the game server included
 npm run check        # svelte-check / TypeScript
-npm test             # unit tests: the rules, the bots, the game, avatars, Census (Node 24+)
+npm test             # unit tests on fixed deals: the rules, the bots, the game, avatars, Census (Node 24+; CI runs these)
+npm run test:sim     # the simulated games: whole games by bots and random players, the ranks' order (local only)
 npm run build && npm start   # production server on :8080 (or --port 6311)
 ```
 
@@ -88,9 +89,9 @@ npm run build && npm start   # production server on :8080 (or --port 6311)
 
 This mirrors Schätzle, Vollmond, Kritzle and CDNMS:
 
-- `ci.yml` runs the typecheck, the tests and the build, then smoke-tests the production server (page,
-  headers, a table with a guest and a bot, the deal, no hand on the big screen's stream, the guest's
-  own hand on theirs).
+- `ci.yml` runs the typecheck, the unit tests and the build, then smoke-tests the production server
+  (page, headers, a table with a guest and a bot, the deal, no hand on the big screen's stream, the
+  guest's own hand on theirs). The simulated games (`npm run test:sim`) stay local.
 - `docker-publish.yml` gates on `ci.yml`, then pushes `ghcr.io/ewolution94/stichle:latest` for amd64
   and arm64.
 - The shared Watchtower picks the image up. A push to `release` is the whole deploy, and it ends any

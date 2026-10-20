@@ -13,7 +13,7 @@
 //               it chooses its bid the same way, among the journeyman's and its neighbours.
 //
 // A temperament (cautious, steady, bold) moves every bid a little down or up. No bot ever reads a
-// hand but its own: what they know is what that seat sees (tests/bots.test.mjs → "honest").
+// hand but its own: what they know is what that seat sees (tests/bots.sim.mjs → "honest").
 //
 // Pure functions over a round state from rules.mjs, deterministic: the same state gives the same
 // move (a slip or a sample draws from a generator seeded by the position). Equal cards (two off-suit
