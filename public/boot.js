@@ -1,12 +1,19 @@
-// Applies the saved language before first paint (the family's key `ewo:lang`). Stichle speaks German
-// first: no key means Deutsch, and System is saved as 'system'. Stichle is light only
-// (development/plans/stichle.md), so a saved theme is left alone.
-// Keep in step with src/lib/i18n.svelte.ts (storedChoice, systemLang).
+// Applies the language before first paint (the family's key `ewo:lang`): the one picked on this
+// device, else Dashboard's for Stichle (#ewo-config, which the server puts first in <head>), else
+// Deutsch: Stichle speaks German first. An older pick of System, saved as 'system', still follows
+// the browser. Stichle is light only (development/plans/stichle.md), so a saved theme is left alone.
+// Keep in step with src/lib/defaults.ts and src/lib/i18n.svelte.ts (systemLang).
+var ewoConfig = {};
 try {
-  var lang = localStorage.getItem('ewo:lang');
-  if (lang !== 'en' && lang !== 'de' && lang !== 'system') lang = 'de';
+  ewoConfig = JSON.parse(document.getElementById('ewo-config').textContent) || {};
+} catch (e) {}
+try {
+  var lang = null;
+  try {
+    lang = localStorage.getItem('ewo:lang');
+  } catch (e) {}
   if (lang === 'system') {
-    // System: the first of the browser's languages the game speaks, English otherwise.
+    // An older System: the first of the browser's languages the game speaks, English otherwise.
     var tags = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
     lang = 'en';
     for (var j = 0; j < tags.length; j++) {
@@ -16,6 +23,8 @@ try {
         break;
       }
     }
+  } else if (lang !== 'en' && lang !== 'de') {
+    lang = ewoConfig.lang === 'en' || ewoConfig.lang === 'de' ? ewoConfig.lang : 'de';
   }
   document.documentElement.lang = lang;
 } catch (e) {}

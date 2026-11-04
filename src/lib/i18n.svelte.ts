@@ -1,25 +1,25 @@
-// German and English. The choice lives in Settings (General → Language): System follows the
-// browser's languages, Deutsch or English pins one. Stichle speaks German first, whatever the browser
-// says, like CDNMS: its players are the German-speaking afternoon meeting. So with nothing saved it's
-// Deutsch, and System is saved as the word 'system' under `ewo:lang` (the family's key, whose other
-// apps take a missing key as System). public/boot.js applies it before first paint. The cards follow
-// the language too: Z and N in German (Zauberer, Narr), W and J in English (src/lib/deck.ts).
+// German and English. The choice lives in Settings (General → Language): Deutsch or English pins
+// one; the first choice, Standard, picks none, so the page shows Dashboard's language for Stichle
+// when the owner set one, else Deutsch: Stichle speaks German first, whatever the browser says, like
+// CDNMS, for its players are the German-speaking afternoon meeting. The pick lives under `ewo:lang`
+// (the family's key); Standard removes it. An older pick of System, saved as 'system', still follows
+// the browser. The order is in src/lib/defaults.ts; public/boot.js applies it before first paint.
+// The cards follow the language too: Z and N in German (Zauberer, Narr), W and J in English
+// (src/lib/deck.ts).
 
-export type Lang = 'de' | 'en';
-export type LangChoice = Lang | 'system';
+import { readConfig } from '../../vendor/ewo/elements/config-client.js';
+import { choiceFor, languageFor, type Lang, type LangChoice } from './defaults';
+
+export type { Lang, LangChoice };
 
 const KEY = 'ewo:lang';
-/** What a first visit shows. */
-const DEFAULT: LangChoice = 'de';
 
-function storedChoice(): LangChoice {
+function saved(): string | null {
   try {
-    const stored = localStorage.getItem(KEY);
-    if (stored === 'en' || stored === 'de' || stored === 'system') return stored;
+    return localStorage.getItem(KEY);
   } catch {
-    // storage blocked: the default
+    return null; // storage blocked: the default
   }
-  return DEFAULT;
 }
 
 /** The first of the browser's languages the game speaks, English otherwise (as public/boot.js). */
@@ -31,16 +31,20 @@ export function systemLang(): Lang {
   return 'en';
 }
 
-const choice = storedChoice();
-export const i18n = $state({ choice, lang: choice === 'system' ? systemLang() : choice });
+/** What Standard shows: Dashboard's language for Stichle, else Deutsch. */
+export const defaultLang = (): Lang => languageFor(null, readConfig().lang, systemLang);
+
+const stored = saved();
+export const i18n = $state({ choice: choiceFor(stored, systemLang), lang: languageFor(stored, readConfig().lang, systemLang) });
 
 /** Stores a choice and shows the page in that language. */
 export function setLanguage(next: LangChoice) {
   i18n.choice = next;
-  i18n.lang = next === 'system' ? systemLang() : next;
+  i18n.lang = next === 'system' ? defaultLang() : next;
   document.documentElement.lang = i18n.lang;
   try {
-    localStorage.setItem(KEY, next);
+    if (next === 'system') localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, next);
   } catch {
     // not kept
   }
@@ -52,7 +56,7 @@ const STRINGS = {
     settings: 'Einstellungen',
     general: 'Allgemein',
     language: 'Sprache',
-    langSystem: 'System',
+    langSystem: 'Standard',
     allApps: 'Alle Apps',
     home: 'Zur Startseite',
     connecting: 'Verbinde …',
@@ -426,7 +430,7 @@ const STRINGS = {
     settings: 'Settings',
     general: 'General',
     language: 'Language',
-    langSystem: 'System',
+    langSystem: 'Default',
     allApps: 'All apps',
     home: 'To the start',
     connecting: 'Connecting …',
